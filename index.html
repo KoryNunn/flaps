@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, user-scalable=no">
+    <script src="test.browser.js"></script>
+    <style type="text/css">
+        .flap{
+        }
+        .flap > div{
+            background: white;
+            position: fixed;
+            z-index: 2;
+        }
+        .flap > div.mask{
+            position:fixed;
+            top:0;
+            left: 0;
+            width:2000%;
+            bottom:0;
+            background: -webkit-linear-gradient(left, rgba(0,0,0,0.5) 0%,rgba(0,0,0,0) 100%);
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+
+</body>
+</html>
