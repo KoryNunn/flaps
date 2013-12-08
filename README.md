@@ -25,11 +25,15 @@ Shuv something into it
     // If you are less awesome
     flap.content.innerHTML = 'sadface';
 
-You can optionally pass a DOM element to flaps when it is constructed and it will use it as it's DOM elements. Flap requires at least this structure:
+You can optionally pass a DOM element to flaps when it is constructed and it will use it as it's DOM elements. a Flap requires at least this structure:
 
     <[element]>
         <[element]></[element]>
     </[element]>
+
+and...
+
+    var flap = new Flap(<The above DOM structure>);
 
 however you can add whatever you want in addition to this and it should probably still work.
 
