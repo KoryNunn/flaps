@@ -3,26 +3,81 @@
 <head>
     <meta name="viewport" content="width=device-width, user-scalable=no">
     <script src="test.browser.js"></script>
+    <link href="//fonts.googleapis.com/css?family=Roboto:400,300,100" rel="stylesheet">
     <style type="text/css">
-        .flap{
+        body{
+            font: 400 16px/1.667 "Roboto",sans-serif;
+            color: #555;
+            line-height: 28px;
         }
-        .flap > div{
+        h1{
+            font-weight: 200;
+        }
+        button{
             background: white;
-            position: fixed;
+            border: 1px solid #f1f1f1;
+            cursor: pointer;
+            padding: 10px;
+            color: #3b3b3b;
+        }
+        button:hover{
+            background: #fafafa;
+        }
+        .flap{
+
+        }
+        .flap > div:first-child{
+            background: white;
             z-index: 2;
+
+            padding: 20px;
         }
         .flap > div.mask{
             position:fixed;
             top:0;
             left: 0;
-            width:2000%;
+            width:400%;
             bottom:0;
             background: -webkit-linear-gradient(left, rgba(0,0,0,0.5) 0%,rgba(0,0,0,0) 100%);
             z-index: 1;
         }
+        .flap button{
+            display:block;
+            left:0;
+            right:0;
+            width: inherit;
+            margin: 0 -20px;
+            padding: 22px;
+            text-align: left;
+            border-left:none;
+            border-right:none;
+        }
+        .main{
+            text-align: center;
+            line-height: 40px;
+        }
+        .main h1{
+            font-size: 40px;
+        }
     </style>
 </head>
 <body>
+    <a href="https://github.com/KoryNunn/flap"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"></a>
+    <section class="main">
+        <h1>Flap.js</h1>
 
+        A tiny module for creating android-like swipe-from-the-side menus.
+
+        Flap trys to do as little as possible, and instead you are encouraged to fiddle with them until they suite your needs.
+
+        <h1>Check out mah flaps!</h1>
+
+        Swipe in from the left or right to test them out. (Click-drag on a desktop)
+
+        <p>
+            Or click here:
+            <button class="openLeftFlap">Open Left Flap</button>
+        </p>
+    </section>
 </body>
 </html>

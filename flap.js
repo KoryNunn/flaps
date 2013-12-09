@@ -12,6 +12,7 @@ Flap.prototype = Object.create(EventEmitter.prototype);
 
 Flap.prototype.constructor = Flap;
 Flap.prototype.distance = 0;
+Flap.prototype.state = 'closed';
 Flap.prototype.width = 280;
 Flap.prototype.side = 'left';
 Flap.prototype.gutter = 20;
@@ -37,19 +38,22 @@ Flap.prototype.init = function(){
     this.element.style.position = 'fixed';
     this.element.style.top = '0px';
     this.element.style.bottom = '0px';
-    this.element.style.left = '0px';
-    this.element.style.right = '0px';
     this._setClosed();
 
+    this.content.style['box-sizing'] = 'border-box';
     this.content.style.width = this.width + 'px';
     this.content.style.position = 'absolute';
     this.content.style.top = '0px';
     this.content.style.bottom = '0px';
     this.content.style.width = this.width + 'px';
+    this.content.style['overflow-x'] = 'hidden';
+    this.content.style['overflow-y'] = 'auto';
 
     if(this.side === 'left'){
+        this.element.style.left = '0px';
         this.content.style.left = '0px';
     }else if(this.side === 'right'){
+        this.element.style.right = '0px';
         this.content.style.left = '100%';
     }
     this.update();
@@ -72,7 +76,6 @@ Flap.prototype._start = function(interaction){
     var flap = this;
 
     if(this._isValidInteraction(interaction)){
-        interaction.preventDefault();
         this._setOpen();
     }
 };
@@ -80,6 +83,14 @@ Flap.prototype._drag = function(interaction){
     var flap = this;
 
     if(this.constructor.openFlap === this){
+        var angle = interaction.getCurrentAngle(true);
+        if(angle && !this.beingTouched && ((angle > 45 && angle < 135) || (angle < -45 && angle > -135))){
+            this.constructor.openFlap = null;
+            return;
+        }
+
+        interaction.preventDefault();
+
         flap.beingTouched = true;
         flap.startDistance = flap.startDistance || flap.distance;
         if(flap.side === 'left'){
@@ -127,12 +138,16 @@ Flap.prototype._setOpen = function(){
     if(this.constructor.openFlap !== this){
         this.constructor.openFlap = this;
         this.element.style['pointer-events'] = 'all';
+        this.element.style['width'] = '100%';
+        this.state = 'open';
         this.emit('open');
     }
 };
 Flap.prototype._setClosed = function(){
     this.constructor.openFlap = null;
     this.element.style['pointer-events'] = 'none';
+    this.element.style['width'] = this.gutter + 'px';
+    this.state = 'closed';
     this.emit('close');
 };
 Flap.prototype.update = function(interaction){
@@ -162,7 +177,7 @@ Flap.prototype.settle = function(direction){
     if(this.beingTouched){
         return;
     }
-    if(this.distance <= 0){
+    if(this.distance < 0){
         this.distance = 0;
         this._setClosed();
         this.update();
@@ -181,5 +196,11 @@ Flap.prototype.settle = function(direction){
 };
 Flap.prototype.percentOpen = function(){
     return parseInt(100 / this.width * this.distance);
+};
+Flap.prototype.open = function(){
+    this.settle('open');
+};
+Flap.prototype.close = function(){
+    this.settle('close');
 };
 module.exports = Flap;
