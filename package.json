@@ -11,6 +11,7 @@
   "dependencies": {
     "crel": "~1.1.0",
     "doc-js": "~0.3.1",
-    "interact-js": "~0.4.0"
+    "interact-js": "~0.4.0",
+    "venfix": "0.0.1"
   }
 }

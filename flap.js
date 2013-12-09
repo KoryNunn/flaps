@@ -1,7 +1,8 @@
 var doc = require('doc-js'),
     EventEmitter = require('events').EventEmitter,
     interact = require('interact-js'),
-    crel = require('crel');
+    crel = require('crel'),
+    venfix = require('venfix');
 
 function Flap(element){
     this.render(element);
@@ -40,7 +41,7 @@ Flap.prototype.init = function(){
     this.element.style.bottom = '0px';
     this._setClosed();
 
-    this.content.style['box-sizing'] = 'border-box';
+    this.content.style[venfix('boxSizing')] = 'border-box';
     this.content.style.width = this.width + 'px';
     this.content.style.position = 'absolute';
     this.content.style.top = '0px';
@@ -137,7 +138,7 @@ Flap.prototype._activate = function(event){
 Flap.prototype._setOpen = function(){
     if(this.constructor.openFlap !== this){
         this.constructor.openFlap = this;
-        this.element.style['pointer-events'] = 'all';
+        this.element.style[venfix('pointerEvents')] = 'all';
         this.element.style['width'] = '100%';
         this.state = 'open';
         this.emit('open');
@@ -145,7 +146,7 @@ Flap.prototype._setOpen = function(){
 };
 Flap.prototype._setClosed = function(){
     this.constructor.openFlap = null;
-    this.element.style['pointer-events'] = 'none';
+    this.element.style[venfix('pointerEvents')] = 'none';
     this.element.style['width'] = this.gutter + 'px';
     this.state = 'closed';
     this.emit('close');
@@ -165,7 +166,7 @@ Flap.prototype.update = function(interaction){
 
     if(flap.distance != flap.lastDistance){
         requestAnimationFrame(function(){
-            flap.content.style['-webkit-transform'] = 'translate3d(' + (flap.displayPosition) + 'px,0,0)';
+            flap.content.style[venfix('transform')] = 'translate3d(' + (flap.displayPosition) + 'px,0,0)';
             flap.emit('move');
             flap.lastDistance = flap.distance;
         });

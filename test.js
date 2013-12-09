@@ -1,6 +1,7 @@
 var Flap = require('./flap'),
     doc = require('doc-js'),
-    crel = require('crel');
+    crel = require('crel'),
+    venfix = require('venfix');
 
 var leftFlap = new Flap(crel('div', {'class':'wat'},
         crel('div',
@@ -36,7 +37,7 @@ crel(rightFlap.content,
 
 
 leftFlap.on('move', function(){
-    this.mask.style['-webkit-transform'] = 'translate3d(' + -(100 - this.percentOpen()) + '%,0,0)';
+    this.mask.style[venfix('transform')] = 'translate3d(' + -(100 - this.percentOpen()) + '%,0,0)';
 });
 leftFlap.on('close', function(){
     if(this.mask.parentNode === this.element){

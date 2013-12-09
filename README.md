@@ -10,7 +10,7 @@ Flap trys to do as little as possible, and instead you are encouraged to fiddle 
 
 Make a flap.
 
-    var Flap = require('./flap'),
+    var Flap = require('flaps'),
         flap = new Flap();
 
 Shuv it somewhere
@@ -43,3 +43,9 @@ Flaps will raise a few events during their lifecycle.
  - close: The flap was just closed.
  - open: The flap is now open.
  - move: The flap's position just updated.
+
+ ## Caveat
+
+ Works a bit shit in firefox. Pull requests welcome.
+
+ Does not work in IE, I have no idea why, I didn't look into it much. Pull requests welcome.
