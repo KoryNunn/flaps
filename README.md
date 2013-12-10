@@ -13,6 +13,10 @@ Make a flap.
     var Flap = require('flaps'),
         flap = new Flap();
 
+Assign a side
+
+    flap.side = 'right';
+
 Shuv it somewhere
 
     document.body.appendChild(flap.element);
@@ -43,6 +47,16 @@ Flaps will raise a few events during their lifecycle.
  - close: The flap was just closed.
  - open: The flap is now open.
  - move: The flap's position just updated.
+
+If you want control over how it tweens it's position, you can overwrite the .tween function on the flap:
+
+    // A really exaggerated tween
+    flap.tween = function(direction){
+        var step = (this.width - this.distance) / 2 + 1;
+        this.distance += direction === 'close' ? -step : step;
+    };
+
+I will probably change the way flaps animate in the future to be time based rather than position based..
 
  ## Caveat
 

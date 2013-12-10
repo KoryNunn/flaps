@@ -24,6 +24,7 @@ Flap.prototype.render = function(element){
     );
 
     this.content = this.element.childNodes[0];
+    this.element.flap = this;
 };
 Flap.prototype.bind = function(){
     var flap = this;
@@ -137,15 +138,22 @@ Flap.prototype._activate = function(event){
 };
 Flap.prototype._setOpen = function(){
     if(this.constructor.openFlap !== this){
+        var flap = this;
         this.constructor.openFlap = this;
-        this.element.style[venfix('pointerEvents')] = 'all';
         this.element.style['width'] = '100%';
         this.state = 'open';
         this.emit('open');
+
+        // This prevents the flap from screwing up
+        // events on elements that may be under the swipe zone
+        this._pointerEventTimeout = setTimeout(function(){
+            flap.element.style[venfix('pointerEvents')] = 'all';
+        },500);
     }
 };
 Flap.prototype._setClosed = function(){
     this.constructor.openFlap = null;
+    clearTimeout(this._pointerEventTimeout);
     this.element.style[venfix('pointerEvents')] = 'none';
     this.element.style['width'] = this.gutter + 'px';
     this.state = 'closed';
@@ -190,10 +198,14 @@ Flap.prototype.settle = function(direction){
     }
 
     requestAnimationFrame(function(){
-        flap.distance += direction === 'close' ? -20 : 20;
+        flap.tween(direction);
         flap.update();
         flap.settle(direction);
     });
+};
+Flap.prototype.tween = function(direction){
+    var step = (this.width - this.distance) / 4 + 2;
+    this.distance += direction === 'close' ? -step : step;
 };
 Flap.prototype.percentOpen = function(){
     return parseInt(100 / this.width * this.distance);

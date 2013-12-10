@@ -6,7 +6,7 @@ var Flap = require('./flap'),
 var leftFlap = new Flap(crel('div', {'class':'wat'},
         crel('div',
             crel('h1', 'Hey look! A menu!'),
-            crel('button', {'class':'closeLeftFlap'}, 'Close'),
+            crel('button', {'class':'closeFlap'}, 'Close'),
             crel('p',
                 'This flap has some special stuff going on to cause the background darkening when it is open. ',
                 'You would think the background\'s opacity is just being tweened, but no, ',
@@ -58,10 +58,14 @@ window.onload = function(){
     document.body.appendChild(leftFlap.element);
     document.body.appendChild(rightFlap.element);
 
-    doc('.openLeftFlap').on('click', function(){
-        leftFlap.open();
+    doc('.openFlap').on('click', function(event){
+        if(doc(event.target).is('.left')){
+            leftFlap.open();
+        }else{
+            rightFlap.open();
+        }
     });
-    doc('.closeLeftFlap').on('click', function(){
-        leftFlap.close();
+    doc('.closeFlap').on('click', function(){
+        doc(event.target).closest('.flap').flap.close();
     });
 };

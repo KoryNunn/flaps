@@ -36,7 +36,7 @@
             position:fixed;
             top:0;
             left: 0;
-            width:400%;
+            width:300%;
             bottom:0;
             background: -webkit-linear-gradient(left, rgba(0,0,0,0.5) 0%,rgba(0,0,0,0) 100%);
             background: -moz-linear-gradient(left, rgba(0,0,0,0.5) 0%,rgba(0,0,0,0) 100%);
@@ -60,11 +60,59 @@
         .main h1{
             font-size: 40px;
         }
+        .openFlap{
+            vertical-align: middle;
+            position: fixed;
+            top:10px;
+            width: 150px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            border-color: #aaa;
+            transition: all 0.3s ease-out;
+            -webkit-transition: all 0.1s ease-out;
+            -moz-transition: all 0.1s ease-out;
+            -moz-transition: all 0.1s ease-out;
+            -o-transition: all 0.1s ease-out;
+        }
+        .openFlap:after{
+            content:"\2261";
+            position: absolute;
+            top:0;
+            right: 0;
+            bottom:0;
+            width:26px;
+            font-size: 30px;
+            line-height: 1px;
+            height:1px;
+            margin: auto;
+            font-family: Arial;
+        }
+        .openFlap.left{
+            left:-125px;
+            margin-left:0;
+            text-align: left;
+        }
+        .openFlap.left:hover{
+            left:-1px;
+        }
+        .openFlap.right{
+            right:-125px;
+            margin-right:0;
+            text-align: right;
+        }
+        .openFlap.right:hover{
+            right:-1px;
+        }
+        .openFlap.right:after{
+            left: 0;
+            right:auto;
+        }
     </style>
 </head>
 <body>
     <a href="https://github.com/KoryNunn/flap"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"></a>
     <section class="main">
+        <button class="openFlap left">Open Left Flap</button>
+        <button class="openFlap right">Open Right Flap</button>
         <h1>Flap.js</h1>
 
         A tiny module for creating android-like swipe-from-the-side menus.
@@ -73,12 +121,7 @@
 
         <h1>Check out mah flaps!</h1>
 
-        Swipe in from the left or right to test them out. (Click-drag on a desktop)
-
-        <p>
-            Or click here:
-            <button class="openLeftFlap">Open Left Flap</button>
-        </p>
+        Swipe in from the left or right to test them out. (Click-drag on a desktop, or click the open flap buttons above)
     </section>
 </body>
 </html>
