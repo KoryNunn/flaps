@@ -56,6 +56,13 @@ If you want control over how it tweens it's position, you can overwrite the .twe
         this.distance += direction === 'close' ? -step : step;
     };
 
+If you want to change the flap's style in a way other than transform-x, you can override the updateStyle function:
+
+    // rotate the content instead.
+    flap.updateStyle = function(){
+        this.content.style[venfix('transform')] = 'rotateY(' + (90 - 90 / 100 * this.percentOpen()) + 'deg)';
+    };
+
 I will probably change the way flaps animate in the future to be time based rather than position based..
 
  ## Caveat

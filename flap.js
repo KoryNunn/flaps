@@ -27,11 +27,16 @@ Flap.prototype.render = function(element){
     this.element.flap = this;
 };
 Flap.prototype.bind = function(){
-    var flap = this;
+    var flap = this,
+        delegateTarget = this.delegateTarget || document;
 
-    interact.on('start', document, flap._start.bind(flap));
+    // Allow starting the drag on a delegate target
+    interact.on('start', delegateTarget, flap._start.bind(flap));
+
+    // Still use document for the other events for robustness.
     interact.on('drag', document, flap._drag.bind(flap));
     interact.on('end', document, flap._end.bind(flap));
+
     doc(this.element).on('click', flap._activate.bind(flap));
 };
 Flap.prototype.init = function(){
@@ -116,7 +121,7 @@ Flap.prototype._end = function(interaction){
 
     var direction = 'close';
 
-    if(Math.abs(this.speed) >= 5){
+    if(Math.abs(this.speed) >= 3){
         direction = this.speed < 0 ? 'close' : 'open';
     }else if(this.distance < this.width / 2){
         direction = 'close';
@@ -174,11 +179,14 @@ Flap.prototype.update = function(interaction){
 
     if(flap.distance != flap.lastDistance){
         requestAnimationFrame(function(){
-            flap.content.style[venfix('transform')] = 'translate3d(' + (flap.displayPosition) + 'px,0,0)';
+            flap.updateStyle(flap.displayPosition);
             flap.emit('move');
             flap.lastDistance = flap.distance;
         });
     }
+};
+Flap.prototype.updateStyle = function(displayPosition){
+    this.content.style[venfix('transform')] = 'translate3d(' + (displayPosition) + 'px,0,0)';
 };
 Flap.prototype.settle = function(direction){
     var flap = this;
@@ -198,14 +206,14 @@ Flap.prototype.settle = function(direction){
     }
 
     requestAnimationFrame(function(){
-        flap.tween(direction);
+        var step = flap.tween(direction);
+        flap.distance += direction === 'close' ? -step : step;
         flap.update();
         flap.settle(direction);
     });
 };
 Flap.prototype.tween = function(direction){
-    var step = (this.width - this.distance) / 4 + 2;
-    this.distance += direction === 'close' ? -step : step;
+    return (this.width - this.distance) / 4 + 2;
 };
 Flap.prototype.percentOpen = function(){
     return parseInt(100 / this.width * this.distance);

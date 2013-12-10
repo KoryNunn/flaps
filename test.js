@@ -23,7 +23,6 @@ var leftFlap = new Flap(crel('div', {'class':'wat'},
 
 leftFlap.mask = leftFlap.element.lastChild;
 
-
 rightFlap.side = 'right';
 
 crel(rightFlap.content,
