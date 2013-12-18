@@ -1,4 +1,4 @@
-var Flap = require('./flap'),
+var Flap = require('./flaps'),
     doc = require('doc-js'),
     crel = require('crel'),
     venfix = require('venfix');
