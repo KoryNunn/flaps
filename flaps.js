@@ -40,12 +40,16 @@ Flap.prototype.bind = function(){
     doc(this.element).on('click', flap._activate.bind(flap));
 };
 Flap.prototype.init = function(){
-    var flap = this;
+    this.enable();
+    this.emit('ready');
+};
+Flap.prototype.enable = function(){
+    this.enabled = true;
 
     this.element.style.position = 'fixed';
     this.element.style.top = '0px';
     this.element.style.bottom = '0px';
-    this._setClosed();
+    this.close();
 
     this.content.style[venfix('boxSizing')] = 'border-box';
     this.content.style.width = this.width + 'px';
@@ -64,7 +68,30 @@ Flap.prototype.init = function(){
         this.content.style.left = '100%';
     }
     this.update();
-    this.emit('ready');
+};
+Flap.prototype.disable = function(){
+    this.enabled = false;
+
+    this.element.style.position = null;
+    this.element.style.top = null;
+    this.element.style.bottom = null;
+    this.element.style.width = null;
+
+    this.content.style[venfix('boxSizing')] = null;
+    this.content.style[venfix('transform')] = null;
+    this.content.style.width = null;
+    this.content.style.position = null;
+    this.content.style.top = null;
+    this.content.style.bottom = null;
+    this.content.style.width = null;
+    this.content.style['overflow-x'] = null;
+    this.content.style['overflow-y'] = null;
+
+    this.element.style.left = null;
+    this.content.style.left = null;
+    this.element.style.right = null;
+    this.content.style.left = null;
+    this.update();
 };
 Flap.prototype._isValidInteraction = function(interaction){
     if(this.constructor.openFlap){
@@ -81,6 +108,10 @@ Flap.prototype._isValidInteraction = function(interaction){
 };
 Flap.prototype._start = function(interaction){
     var flap = this;
+
+    if(!this.enabled){
+        return;
+    }
 
     if(this._isValidInteraction(interaction)){
         this._setOpen();
@@ -132,6 +163,9 @@ Flap.prototype._end = function(interaction){
     this.settle(direction);
 };
 Flap.prototype._activate = function(event){
+    if(!this.enabled){
+        return;
+    }
     if(
         !doc(event.target).closest(this.content) &&
         this.constructor.openFlap === this
@@ -219,9 +253,15 @@ Flap.prototype.percentOpen = function(){
     return parseInt(100 / this.width * this.distance);
 };
 Flap.prototype.open = function(){
+    if(!this.enabled){
+        return;
+    }
     this.settle('open');
 };
 Flap.prototype.close = function(){
+    if(!this.enabled){
+        return;
+    }
     this.settle('close');
 };
 module.exports = Flap;
