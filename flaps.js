@@ -147,6 +147,11 @@ Flap.prototype._end = function(interaction){
     if(this.constructor.openFlap !== this){
         return;
     }
+    if(!this.beingTouched){
+        // No drag was performed, just cancel the interaction.
+        this.constructor.openFlap = null;
+        return;
+    }
 
     this.startDistance = null;
     this.beingTouched = false;
@@ -226,6 +231,8 @@ Flap.prototype.updateStyle = function(displayPosition){
 Flap.prototype.settle = function(direction){
     var flap = this;
 
+    cancelAnimationFrame(this.settleFrame);
+
     if(this.beingTouched){
         return;
     }
@@ -242,7 +249,7 @@ Flap.prototype.settle = function(direction){
         return;
     }
 
-    requestAnimationFrame(function(){
+    this.settleFrame = requestAnimationFrame(function(){
         var step = flap.tween(direction);
         flap.distance += direction === 'close' ? -step : step;
         flap.update();
