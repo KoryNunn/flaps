@@ -233,10 +233,12 @@ Flap.prototype.settle = function(direction){
         this.distance = 0;
         this._setClosed();
         this.update();
+        this.emit('settle');
         return;
     }else if(this.distance > this.width){
         this.distance = this.width;
         this.update();
+        this.emit('settle');
         return;
     }
 
