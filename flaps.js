@@ -6,7 +6,6 @@ var doc = require('doc-js'),
 
 function Flap(element){
     this.render(element);
-    this.bind();
     setTimeout(this.init.bind(this),10);
 }
 Flap.prototype = Object.create(EventEmitter.prototype);
@@ -28,7 +27,7 @@ Flap.prototype.render = function(element){
 };
 Flap.prototype.bind = function(){
     var flap = this,
-        delegateTarget = this.delegateTarget || document;
+        delegateTarget = doc(this.delegateTarget)[0] || document;
 
     // Allow starting the drag on a delegate target
     interact.on('start', delegateTarget, flap._start.bind(flap));
@@ -36,12 +35,17 @@ Flap.prototype.bind = function(){
     // Still use document for the other events for robustness.
     interact.on('drag', document, flap._drag.bind(flap));
     interact.on('end', document, flap._end.bind(flap));
+    interact.on('cancel', document, flap._end.bind(flap));
 
     doc(this.element).on('click', flap._activate.bind(flap));
 };
 Flap.prototype.init = function(){
-    this.enable();
-    this.emit('ready');
+    var flap = this;
+    doc.ready(function(){
+        flap.bind();
+        flap.enable();
+        flap.emit('ready');
+    });
 };
 Flap.prototype.enable = function(){
     this.enabled = true;
@@ -123,14 +127,14 @@ Flap.prototype._drag = function(interaction){
 
     if(this.constructor.openFlap === this){
         var angle = interaction.getCurrentAngle(true);
-        if(angle && !this.beingTouched && ((angle > 45 && angle < 135) || (angle < -45 && angle > -135))){
+        if(angle && !this.beingDragged && ((angle > 45 && angle < 135) || (angle < -45 && angle > -135))){
             this.constructor.openFlap = null;
             return;
         }
 
         interaction.preventDefault();
 
-        flap.beingTouched = true;
+        flap.beingDragged = true;
         flap.startDistance = flap.startDistance || flap.distance;
         if(flap.side === 'left'){
             flap.distance = flap.startDistance + interaction.pageX - interaction.lastStart.pageX;
@@ -144,17 +148,12 @@ Flap.prototype._drag = function(interaction){
     }
 };
 Flap.prototype._end = function(interaction){
-    if(this.constructor.openFlap !== this){
-        return;
-    }
-    if(!this.beingTouched){
-        // No drag was performed, just cancel the interaction.
-        this.constructor.openFlap = null;
+    if(this.constructor.openFlap !== this || !this.beingDragged){
         return;
     }
 
     this.startDistance = null;
-    this.beingTouched = false;
+    this.beingDragged = false;
 
     var direction = 'close';
 
@@ -177,7 +176,7 @@ Flap.prototype._activate = function(event){
         this.constructor.openFlap === this
     ){
         event.preventDefault();
-        this.beingTouched = false;
+        this.beingDragged = false;
         this.settle('close');
     }
 };
@@ -233,7 +232,7 @@ Flap.prototype.settle = function(direction){
 
     cancelAnimationFrame(this.settleFrame);
 
-    if(this.beingTouched){
+    if(this.beingDragged){
         return;
     }
     if(this.distance < 0){

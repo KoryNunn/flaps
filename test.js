@@ -64,7 +64,7 @@ window.onload = function(){
             rightFlap.open();
         }
     });
-    doc('.closeFlap').on('click', function(){
+    doc('.closeFlap').on('click', function(event){
         doc(event.target).closest('.flap').flap.close();
     });
 };
