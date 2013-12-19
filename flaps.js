@@ -76,6 +76,7 @@ Flap.prototype.disable = function(){
     this.element.style.top = null;
     this.element.style.bottom = null;
     this.element.style.width = null;
+    this.element.style[venfix('pointerEvents')] = null;
 
     this.content.style[venfix('boxSizing')] = null;
     this.content.style[venfix('transform')] = null;
