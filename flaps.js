@@ -6,7 +6,7 @@ var doc = require('doc-js'),
 
 function Flap(element){
     this.render(element);
-    setTimeout(this.init.bind(this),10);
+    this.init();
 }
 Flap.prototype = Object.create(EventEmitter.prototype);
 
@@ -43,7 +43,11 @@ Flap.prototype.init = function(){
     var flap = this;
     doc.ready(function(){
         flap.bind();
-        flap.enable();
+        if(this.enabled !== false){
+            flap.enable();
+        }else{
+            flap.disable();
+        }
         flap.emit('ready');
     });
 };
@@ -128,7 +132,6 @@ Flap.prototype._drag = function(interaction){
     if(this.constructor.openFlap === this){
         var angle = interaction.getCurrentAngle(true);
         if(angle && !this.beingDragged && ((angle > 45 && angle < 135) || (angle < -45 && angle > -135))){
-            this.constructor.openFlap = null;
             return;
         }
 
@@ -225,7 +228,9 @@ Flap.prototype.update = function(interaction){
     }
 };
 Flap.prototype.updateStyle = function(displayPosition){
-    this.content.style[venfix('transform')] = 'translate3d(' + (displayPosition) + 'px,0,0)';
+    if(this.enabled){
+        this.content.style[venfix('transform')] = 'translate3d(' + (displayPosition) + 'px,0,0)';
+    }
 };
 Flap.prototype.settle = function(direction){
     var flap = this;
