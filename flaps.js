@@ -21,6 +21,7 @@ Flap.prototype.render = function(element){
     this.element = element || crel('div',
         crel('div')
     );
+    this.element.style.opacity = '0';
 
     this.content = this.element.childNodes[0];
     this.element.flap = this;
@@ -49,6 +50,7 @@ Flap.prototype.init = function(){
             flap.disable();
         }
         flap.emit('ready');
+        flap.element.style.opacity = '1';
     });
 };
 Flap.prototype.enable = function(){
