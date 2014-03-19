@@ -2,7 +2,8 @@ var doc = require('doc-js'),
     EventEmitter = require('events').EventEmitter,
     interact = require('interact-js'),
     crel = require('crel'),
-    venfix = require('venfix');
+    venfix = require('venfix'),
+    laidout = require('laidout');
 
 function Flap(element){
     this.render(element);
@@ -42,7 +43,7 @@ Flap.prototype.bind = function(){
 };
 Flap.prototype.init = function(){
     var flap = this;
-    doc.ready(function(){
+    laidout(this.element, function(){
         flap.bind();
         if(this.enabled !== false){
             flap.enable();
@@ -50,7 +51,7 @@ Flap.prototype.init = function(){
             flap.disable();
         }
         flap.emit('ready');
-        flap.element.style.opacity = '1';
+        flap.element.style.opacity = null;
     });
 };
 Flap.prototype.enable = function(){

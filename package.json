@@ -12,6 +12,7 @@
     "crel": "1.1.x",
     "doc-js": "0.4.x",
     "interact-js": "0.4.x",
-    "venfix": "0.0.x"
+    "venfix": "0.0.x",
+    "laidout": "^1.0.0"
   }
 }
