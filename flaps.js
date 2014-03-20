@@ -139,7 +139,8 @@ Flap.prototype._drag = function(interaction){
 
     if(this.constructor.openFlap === this){
         var angle = interaction.getCurrentAngle(true);
-        if(angle && !this.beingDragged && ((angle > 45 && angle < 135) || (angle < -45 && angle > -135))){
+        if(!this.beingDragged && ((angle > 45 && angle < 135) || (angle < -45 && angle > -135))){
+            this.constructor.openFlap = null;
             return;
         }
 
