@@ -60,7 +60,7 @@ Flap.prototype.enable = function(){
     this.element.style.position = 'fixed';
     this.element.style.top = '0px';
     this.element.style.bottom = '0px';
-    this.content.style.width = '100%';
+    this.element.style.width = '100%';
     this.close();
 
     this.content.style[venfix('boxSizing')] = 'border-box';
