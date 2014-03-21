@@ -137,10 +137,10 @@ Flap.prototype._start = function(interaction){
 Flap.prototype._drag = function(interaction){
     var flap = this;
 
-    if(this.constructor.openFlap === this){
+    if(flap.constructor.openFlap === flap){
         var angle = interaction.getCurrentAngle(true);
-        if(!this.beingDragged && ((angle > 45 && angle < 135) || (angle < -45 && angle > -135))){
-            this.constructor.openFlap = null;
+        if(!flap.beingDragged && ((angle > 45 && angle < 135) || (angle < -45 && angle > -135))){
+            flap.constructor.openFlap = null;
             return;
         }
 
@@ -160,7 +160,11 @@ Flap.prototype._drag = function(interaction){
     }
 };
 Flap.prototype._end = function(interaction){
-    if(this.constructor.openFlap !== this || !this.beingDragged){
+    if(this.constructor.openFlap !== this){
+        return;
+    }
+    if(!this.beingDragged){
+        this.settle(this.distance <= 0 ? 'close' : 'open');
         return;
     }
 
@@ -250,13 +254,15 @@ Flap.prototype.settle = function(direction){
         return;
     }
 
-    if(this.distance < 0){
+    flap.distance += direction === 'close' ? -1 : 1;
+
+    if(this.distance <= 0){
         this.distance = 0;
         this._setClosed();
         this.update();
         this.emit('settle');
         return;
-    }else if(this.distance > this.width){
+    }else if(this.distance >= this.width){
         this.distance = this.width;
         this.update();
         this.emit('settle');
