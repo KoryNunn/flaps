@@ -79,6 +79,7 @@ Flap.prototype.enable = function(){
         this.element.style.right = '0px';
         this.content.style.left = '100%';
     }
+    this.hide();
     this.update();
 };
 Flap.prototype.disable = function(){
@@ -89,7 +90,6 @@ Flap.prototype.disable = function(){
     this.element.style.bottom = null;
     this.element.style.width = null;
     this.element.style[venfix('pointerEvents')] = null;
-    this.element.style.display = null;
 
     this.content.style[venfix('boxSizing')] = null;
     this.content.style[venfix('transform')] = null;
@@ -108,6 +108,7 @@ Flap.prototype.disable = function(){
 
     cancelAnimationFrame(this.settleFrame);
 
+    this.show();
     this.update();
 };
 Flap.prototype._isValidInteraction = function(interaction){
@@ -200,7 +201,7 @@ Flap.prototype._setOpen = function(){
     if(this.constructor.openFlap !== this){
         var flap = this;
         this.constructor.openFlap = this;
-        this.element.style['display'] = null;
+        this.show();
         this.state = 'open';
         this.emit('open');
 
@@ -211,11 +212,21 @@ Flap.prototype._setOpen = function(){
         },500);
     }
 };
+Flap.prototype.hide = function(){
+    if(this.element.style.visibility !== 'hidden'){
+        this.element.style.visibility = 'hidden';
+    }
+};
+Flap.prototype.show = function(){
+    if(this.element.style.visibility !== ''){
+        this.element.style.visibility = '';
+    }
+};
 Flap.prototype._setClosed = function(){
     this.constructor.openFlap = null;
     clearTimeout(this._pointerEventTimeout);
     this.element.style[venfix('pointerEvents')] = 'none';
-    this.element.style['display'] = 'none';
+    this.hide();
     this.state = 'closed';
     this.emit('close');
 };
