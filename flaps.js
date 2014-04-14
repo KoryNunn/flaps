@@ -38,8 +38,6 @@ Flap.prototype.bind = function(){
     interact.on('drag', document, flap._drag.bind(flap));
     interact.on('end', document, flap._end.bind(flap));
     interact.on('cancel', document, flap._end.bind(flap));
-
-    doc(this.element).on('click', flap._activate.bind(flap));
 };
 Flap.prototype.init = function(){
     var flap = this;
@@ -166,6 +164,7 @@ Flap.prototype._end = function(interaction){
     }
     if(!this.beingDragged){
         this.settle(this.distance <= 0 ? 'close' : 'open');
+        this._activate(interaction);
         return;
     }
 
