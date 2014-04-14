@@ -21,7 +21,9 @@ var leftFlap = new Flap(crel('div', {'class':'wat'},
         ),
         crel('div', {'class':'mask'})
     )),
-    rightFlap = new Flap();
+    rightFlap = new Flap(),
+    bottomFlap = new Flap(),
+    topFlap = new Flap();
 
 leftFlap.mask = leftFlap.element.lastChild;
 
@@ -36,8 +38,25 @@ crel(rightFlap.content,
         'it\'s background rgba() color to achieve the darkened effect.',
         'You will noticed it is a bit choppy on mobile devies. '
     )
-)
+);
 
+bottomFlap.side = 'bottom';
+
+crel(bottomFlap.content,
+    crel('h1', 'A bottom one'),
+    crel('p',
+        'stuff'
+    )
+);
+
+topFlap.side = 'top';
+
+crel(topFlap.content,
+    crel('h1', 'A top one'),
+    crel('p',
+        'stuff'
+    )
+);
 
 leftFlap.on('move', function(){
     this.mask.style[venfix('transform')] = 'translate3d(' + -(100 - this.percentOpen()) + '%,0,0)';
@@ -55,11 +74,23 @@ rightFlap.on('move', function(){
     this.element.style.background = 'rgba(0,0,0,' + this.percentOpen() / 200 + ')';
 });
 
+bottomFlap.on('move', function(){
+    this.element.style.background = 'rgba(0,0,0,' + this.percentOpen() / 200 + ')';
+});
+
+topFlap.on('move', function(){
+    this.element.style.background = 'rgba(0,0,0,' + this.percentOpen() / 200 + ')';
+});
+
 window.onload = function(){
     leftFlap.element.classList.add('flap');
     rightFlap.element.classList.add('flap');
+    bottomFlap.element.classList.add('flap');
+    topFlap.element.classList.add('flap');
     document.body.appendChild(leftFlap.element);
     document.body.appendChild(rightFlap.element);
+    document.body.appendChild(bottomFlap.element);
+    document.body.appendChild(topFlap.element);
 
     doc('.openFlap').on('click', function(event){
         if(doc(event.target).is('.left')){

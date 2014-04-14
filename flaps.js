@@ -5,6 +5,25 @@ var doc = require('doc-js'),
     venfix = require('venfix'),
     laidout = require('laidout');
 
+var LEFT = 'left';
+    RIGHT = 'right';
+    BOTTOM = 'bottom';
+    TOP = 'top',
+    CLOSED = 'closed',
+    OPEN = 'open',
+    CLOSE = 'close'
+    HORIZONTAL = 'horizontal',
+    VERTICAL = 'vertical',
+    CLOSE = 'close';
+
+function getPlane(angle){
+    return ((angle > 45 && angle < 135) || (angle < -45 && angle > -135)) ? HORIZONTAL : VERTICAL;
+}
+
+function getPlaneForSide(side){
+    return (side === LEFT || side === RIGHT) ? HORIZONTAL : VERTICAL;
+}
+
 function Flap(element){
     this.render(element);
     this.init();
@@ -13,9 +32,9 @@ Flap.prototype = Object.create(EventEmitter.prototype);
 
 Flap.prototype.constructor = Flap;
 Flap.prototype.distance = 0;
-Flap.prototype.state = 'closed';
+Flap.prototype.state = CLOSED;
 Flap.prototype.width = 280;
-Flap.prototype.side = 'left';
+Flap.prototype.side = LEFT;
 Flap.prototype.gutter = 20;
 
 Flap.prototype.render = function(element){
@@ -58,24 +77,33 @@ Flap.prototype.enable = function(){
     this.element.style.position = 'fixed';
     this.element.style.top = '0px';
     this.element.style.bottom = '0px';
-    this.element.style.width = '100%';
+    this.element.style.left = '0px';
+    this.element.style.right = '0px';
     this.close();
 
     this.content.style[venfix('boxSizing')] = 'border-box';
-    this.content.style.width = this.width + 'px';
     this.content.style.position = 'absolute';
-    this.content.style.top = '0px';
-    this.content.style.bottom = '0px';
-    this.content.style.width = this.width + 'px';
     this.content.style['overflow-x'] = 'hidden';
     this.content.style['overflow-y'] = 'auto';
 
-    if(this.side === 'left'){
-        this.element.style.left = '0px';
+    if(getPlaneForSide(this.side) === HORIZONTAL){
+        this.content.style.top = '0px';
+        this.content.style.bottom = '0px';
+        this.content.style.width = this.width + 'px';
+    }else{
         this.content.style.left = '0px';
-    }else if(this.side === 'right'){
-        this.element.style.right = '0px';
+        this.content.style.right = '0px';
+        this.content.style.height = this.width + 'px';
+    }
+
+    if(this.side === LEFT){
+        this.content.style.left = '0px';
+    }else if(this.side === RIGHT){
         this.content.style.left = '100%';
+    }else if(this.side === BOTTOM){
+        this.content.style.top = '100%';
+    }else if(this.side === TOP){
+        this.content.style.top = '0px';
     }
     this.hide();
     this.update();
@@ -116,10 +144,14 @@ Flap.prototype._isValidInteraction = function(interaction){
     if(this.distance){
         return true;
     }
-    if(this.side === 'left'){
+    if(this.side === LEFT){
         return interaction.pageX < this.distance + this.gutter;
-    }else if(this.side === 'right'){
+    }else if(this.side === RIGHT){
         return interaction.pageX > window.innerWidth - this.gutter;
+    }else if(this.side === BOTTOM){
+        return interaction.pageY > window.innerHeight - this.gutter;
+    }else if(this.side === TOP){
+        return interaction.pageY < this.distance + this.gutter;
     }
 };
 Flap.prototype._start = function(interaction){
@@ -138,19 +170,28 @@ Flap.prototype._drag = function(interaction){
 
     if(flap.constructor.openFlap === flap){
         var angle = interaction.getCurrentAngle(true);
-        if(!flap.beingDragged && ((angle > 45 && angle < 135) || (angle < -45 && angle > -135))){
-            flap.constructor.openFlap = null;
-            return;
+
+        var side = flap.side;
+
+        if(!flap.beingDragged){
+            if(getPlaneForSide(side) === getPlane(angle)){
+                flap.constructor.openFlap = null;
+                return;
+            }
         }
 
         interaction.preventDefault();
 
         flap.beingDragged = true;
         flap.startDistance = flap.startDistance || flap.distance;
-        if(flap.side === 'left'){
+        if(flap.side === LEFT){
             flap.distance = flap.startDistance + interaction.pageX - interaction.lastStart.pageX;
-        }else{
+        }else if(flap.side === RIGHT){
             flap.distance = flap.startDistance - interaction.pageX + interaction.lastStart.pageX;
+        }else if(flap.side === BOTTOM){
+            flap.distance = flap.startDistance - interaction.pageY + interaction.lastStart.pageY;
+        }else if(flap.side === TOP){
+            flap.distance = flap.startDistance + interaction.pageY - interaction.lastStart.pageY;
         }
         flap.distance = Math.max(Math.min(flap.distance, flap.width), 0);
         flap.update();
@@ -163,7 +204,7 @@ Flap.prototype._end = function(interaction){
         return;
     }
     if(!this.beingDragged){
-        this.settle(this.distance <= 0 ? 'close' : 'open');
+        this.settle(this.distance <= 0 ? CLOSE : OPEN);
         this._activate(interaction);
         return;
     }
@@ -171,14 +212,14 @@ Flap.prototype._end = function(interaction){
     this.startDistance = null;
     this.beingDragged = false;
 
-    var direction = 'close';
+    var direction = CLOSE;
 
     if(Math.abs(this.speed) >= 3){
-        direction = this.speed < 0 ? 'close' : 'open';
+        direction = this.speed < 0 ? CLOSE : OPEN;
     }else if(this.distance < this.width / 2){
-        direction = 'close';
+        direction = CLOSE;
     }else{
-        direction = 'open';
+        direction = OPEN;
     }
 
     this.settle(direction);
@@ -193,7 +234,7 @@ Flap.prototype._activate = function(event){
     ){
         event.preventDefault();
         this.beingDragged = false;
-        this.settle('close');
+        this.settle(CLOSE);
     }
 };
 Flap.prototype._setOpen = function(){
@@ -201,8 +242,8 @@ Flap.prototype._setOpen = function(){
         var flap = this;
         this.constructor.openFlap = this;
         this.show();
-        this.state = 'open';
-        this.emit('open');
+        this.state = OPEN;
+        this.emit(OPEN);
 
         // This prevents the flap from screwing up
         // events on elements that may be under the swipe zone
@@ -226,8 +267,8 @@ Flap.prototype._setClosed = function(){
     clearTimeout(this._pointerEventTimeout);
     this.element.style[venfix('pointerEvents')] = 'none';
     this.hide();
-    this.state = 'closed';
-    this.emit('close');
+    this.state = CLOSED;
+    this.emit(CLOSE);
 };
 Flap.prototype.update = function(interaction){
     var flap = this;
@@ -236,9 +277,9 @@ Flap.prototype.update = function(interaction){
         this._setOpen();
     }
 
-    if(this.side === 'left'){
+    if(this.side === LEFT || this.side === TOP){
         this.displayPosition = flap.distance - flap.width;
-    }else if(this.side === 'right'){
+    }else{
         this.displayPosition = -flap.distance;
     }
 
@@ -252,7 +293,11 @@ Flap.prototype.update = function(interaction){
 };
 Flap.prototype.updateStyle = function(displayPosition){
     if(this.enabled){
-        this.content.style[venfix('transform')] = 'translate3d(' + (displayPosition) + 'px,0,0)';
+        if(getPlaneForSide(this.side) === HORIZONTAL){
+            this.content.style[venfix('transform')] = 'translate3d(' + (displayPosition) + 'px,0,0)';
+        }else{
+            this.content.style[venfix('transform')] = 'translate3d(0,' + (displayPosition) + 'px,0)';
+        }
     }
 };
 Flap.prototype.settle = function(direction){
@@ -264,7 +309,7 @@ Flap.prototype.settle = function(direction){
         return;
     }
 
-    flap.distance += direction === 'close' ? -1 : 1;
+    flap.distance += direction === CLOSE ? -1 : 1;
 
     if(this.distance <= 0){
         this.distance = 0;
@@ -281,13 +326,13 @@ Flap.prototype.settle = function(direction){
 
     this.settleFrame = requestAnimationFrame(function(){
         var step = flap.tween(direction);
-        flap.distance += direction === 'close' ? -step : step;
+        flap.distance += direction === CLOSE ? -step : step;
         flap.update();
         flap.settle(direction);
     });
 };
 Flap.prototype.tween = function(direction){
-    return direction === 'open' ?
+    return direction === OPEN ?
         (this.width - this.distance) / 3 + 1:
         this.distance / 3 + 1;
 };
@@ -298,12 +343,12 @@ Flap.prototype.open = function(){
     if(!this.enabled){
         return;
     }
-    this.settle('open');
+    this.settle(OPEN);
 };
 Flap.prototype.close = function(){
     if(!this.enabled){
         return;
     }
-    this.settle('close');
+    this.settle(CLOSE);
 };
 module.exports = Flap;
