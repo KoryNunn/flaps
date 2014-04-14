@@ -9,9 +9,9 @@
   "author": "",
   "license": "BSD",
   "dependencies": {
-    "crel": "1.1.x",
+    "crel": "^1.1.0",
     "doc-js": "0.4.x",
-    "interact-js": "0.4.x",
+    "interact-js": "^1.0.0",
     "venfix": "0.0.x",
     "laidout": "^1.0.0"
   }

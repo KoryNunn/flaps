@@ -80,6 +80,7 @@ Flap.prototype.enable = function(){
         this.element.style.right = '0px';
         this.content.style.left = '100%';
     }
+    this.hide();
     this.update();
 };
 Flap.prototype.disable = function(){
@@ -90,7 +91,6 @@ Flap.prototype.disable = function(){
     this.element.style.bottom = null;
     this.element.style.width = null;
     this.element.style[venfix('pointerEvents')] = null;
-    this.element.style.display = null;
 
     this.content.style[venfix('boxSizing')] = null;
     this.content.style[venfix('transform')] = null;
@@ -109,6 +109,7 @@ Flap.prototype.disable = function(){
 
     cancelAnimationFrame(this.settleFrame);
 
+    this.show();
     this.update();
 };
 Flap.prototype._isValidInteraction = function(interaction){
@@ -201,7 +202,7 @@ Flap.prototype._setOpen = function(){
     if(this.constructor.openFlap !== this){
         var flap = this;
         this.constructor.openFlap = this;
-        this.element.style['display'] = null;
+        this.show();
         this.state = 'open';
         this.emit('open');
 
@@ -212,11 +213,21 @@ Flap.prototype._setOpen = function(){
         },500);
     }
 };
+Flap.prototype.hide = function(){
+    if(this.element.style.visibility !== 'hidden'){
+        this.element.style.visibility = 'hidden';
+    }
+};
+Flap.prototype.show = function(){
+    if(this.element.style.visibility !== ''){
+        this.element.style.visibility = '';
+    }
+};
 Flap.prototype._setClosed = function(){
     this.constructor.openFlap = null;
     clearTimeout(this._pointerEventTimeout);
     this.element.style[venfix('pointerEvents')] = 'none';
-    this.element.style['display'] = 'none';
+    this.hide();
     this.state = 'closed';
     this.emit('close');
 };
@@ -345,7 +356,7 @@ module.exports = Flap;
     }
 }(this, function () {
     // based on http://stackoverflow.com/questions/384286/javascript-isdom-how-do-you-check-if-a-javascript-object-is-a-dom-object
-    var isNode = typeof Node === 'object'
+    var isNode = typeof Node === 'function'
         ? function (object) { return object instanceof Node; }
         : function (object) {
             return object
@@ -1235,6 +1246,7 @@ Interaction.prototype = {
 
         setInheritedData(this, interactionInfo);
 
+        this.phase = 'start';
         interact.emit('start', event.target, event, this);
         return this;
     },
@@ -1262,6 +1274,7 @@ Interaction.prototype = {
         lastMove && (currentTouch.angle = Math.atan2(currentTouch.pageY - lastMove.pageY, currentTouch.pageX - lastMove.pageX) * 180 / Math.PI);
         this.angle = currentTouch.angle || 0;
 
+        this.phase = 'move';
         interact.emit('move', event.target, event, this);
         return this;
     },
@@ -1299,6 +1312,7 @@ Interaction.prototype = {
         this.angle = currentTouch.angle || 0;
 
         if(this.dragStarted){
+            this.phase = 'drag';
             interact.emit('drag', event.target, event, this);
         }
         return this;
@@ -1311,6 +1325,7 @@ Interaction.prototype = {
         // Update the interaction
         setInheritedData(this, interactionInfo);
 
+        this.phase = 'end';
         interact.emit('end', event.target, event, this);
 
         return this;
@@ -1323,6 +1338,7 @@ Interaction.prototype = {
         // Update the interaction
         setInheritedData(this, interactionInfo);
 
+        this.phase = 'cancel';
         interact.emit('cancel', event.target, event, this);
 
         return this;
@@ -1383,6 +1399,9 @@ Interaction.prototype = {
                 angle = angle/stepsUsed;
             }
         }
+        if(angle === Infinity){
+            return firstAngle;
+        }
         return angle;
     },
     getAllInteractions: function(){
@@ -1431,19 +1450,30 @@ addEvent(document, 'touchcancel', cancel);
 var mouseIsDown = false;
 addEvent(document, 'mousedown', function(event){
     mouseIsDown = true;
+
     if(!interactions.length){
         new Interaction(event);
     }
+
+    var interaction = getInteraction();
+
+    if(!interaction){
+        return;
+    }
+
     getInteraction().start(event);
 });
 addEvent(document, 'mousemove', function(event){
     if(!interactions.length){
         new Interaction(event);
     }
+
     var interaction = getInteraction();
+
     if(!interaction){
         return;
     }
+
     if(mouseIsDown){
         interaction.drag(event);
     }else{
@@ -1452,11 +1482,15 @@ addEvent(document, 'mousemove', function(event){
 });
 addEvent(document, 'mouseup', function(event){
     mouseIsDown = false;
+
     var interaction = getInteraction();
+
     if(!interaction){
         return;
     }
+
     interaction.end(event, null);
+    interaction.destroy();
 });
 
 function addEvent(element, type, callback) {
