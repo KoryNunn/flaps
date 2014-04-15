@@ -111,6 +111,7 @@ Flap.prototype.enable = function(){
 };
 Flap.prototype.disable = function(){
     this.enabled = false;
+    this.distance = 0;
 
     this.element.style.position = null;
     this.element.style.top = null;
@@ -338,7 +339,7 @@ Flap.prototype.tween = function(direction){
         this.distance / 3 + 1;
 };
 Flap.prototype.percentOpen = function(){
-    return parseFloat(100 / this.renderedWidth() * this.distance);
+    return parseFloat(100 / this.renderedWidth() * this.distance) || 0;
 };
 Flap.prototype.open = function(){
     if(!this.enabled){
