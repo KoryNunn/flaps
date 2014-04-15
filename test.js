@@ -22,8 +22,8 @@ var leftFlap = new Flap(crel('div', {'class':'wat'},
         crel('div', {'class':'mask'})
     )),
     rightFlap = new Flap(),
-    bottomFlap = new Flap(),
-    topFlap = new Flap();
+    topFlap = new Flap(),
+    bottomFlap = new Flap();
 
 leftFlap.mask = leftFlap.element.lastChild;
 
@@ -41,11 +41,15 @@ crel(rightFlap.content,
 );
 
 bottomFlap.side = 'bottom';
+bottomFlap.gutter = window.innerHeight - 30;
+doc(window).on('resize', function(){
+    bottomFlap.gutter = window.innerHeight - 30;
+});
 
 crel(bottomFlap.content,
     crel('h1', 'A bottom one'),
     crel('p',
-        'stuff'
+        'Woah fancy!'
     )
 );
 
@@ -76,8 +80,18 @@ function fadeBackground(){
 }
 
 rightFlap.on('move', fadeBackground);
-bottomFlap.on('move', fadeBackground);
 topFlap.on('move', fadeBackground);
+bottomFlap.on('move', function(){
+    // Lets go nuts..
+    var openness = this.percentOpen() / 100;
+    this.element.style.background = 'rgba(0,0,0,' + openness / 10 + ')';
+    this.content.style['box-shadow'] = '0px 0px ' + (50 * openness) + 'px rgba(0,0,0,' + openness / 3 + ')';
+
+    var main = doc('.main')[0];
+    main.style[venfix('transform')] = 'translate3d(0,' + (-100 * openness) + 'px,' + (-150 * openness) + 'px) rotate3d(1,0,0,'+ (45 * openness) +'deg)';
+    main.style['text-shadow'] = '0px ' + (100 * openness) + 'px 3px rgba(0,0,0,' + openness / 3 + ')';
+    main.style[venfix('maskImage')] = 'linear-gradient(to top, black, rgba(0,0,0,' + (1-openness) + ')';
+});
 
 window.onload = function(){
     leftFlap.element.classList.add('flap');
