@@ -17,6 +17,10 @@ Assign a side
 
     flap.side = 'right';
 
+Assign a width
+
+    flap.width = '50%';
+
 Shuv it somewhere
 
     document.body.appendChild(flap.element);
@@ -53,7 +57,7 @@ If you want control over how it tweens it's position, you can overwrite the .twe
 
     // A really exaggerated tween
     flap.tween = function(direction){
-        var step = (this.width - this.distance) / 2 + 1;
+        var step = (this.renderedWidth() - this.distance) / 2 + 1;
         this.distance += direction === 'close' ? -step : step;
     };
 

@@ -4,6 +4,7 @@ var doc = require('doc-js'),
     interact = require('interact-js'),
     crel = require('crel'),
     venfix = require('venfix'),
+    unitr = require('unitr'),
     laidout = require('laidout');
 
 var LEFT = 'left';
@@ -76,10 +77,10 @@ Flap.prototype.enable = function(){
     this.enabled = true;
 
     this.element.style.position = 'fixed';
-    this.element.style.top = '0px';
-    this.element.style.bottom = '0px';
-    this.element.style.left = '0px';
-    this.element.style.right = '0px';
+    this.element.style.top = unitr(0);
+    this.element.style.bottom = unitr(0);
+    this.element.style.left = unitr(0);
+    this.element.style.right = unitr(0);
     this.close();
 
     this.content.style[venfix('boxSizing')] = 'border-box';
@@ -88,23 +89,23 @@ Flap.prototype.enable = function(){
     this.content.style['overflow-y'] = 'auto';
 
     if(getPlaneForSide(this.side) === HORIZONTAL){
-        this.content.style.top = '0px';
-        this.content.style.bottom = '0px';
-        this.content.style.width = this.width + 'px';
+        this.content.style.top = unitr(0);
+        this.content.style.bottom = unitr(0);
+        this.content.style.width = unitr(this.width);
     }else{
-        this.content.style.left = '0px';
-        this.content.style.right = '0px';
-        this.content.style.height = this.width + 'px';
+        this.content.style.left = unitr(0);
+        this.content.style.right = unitr(0);
+        this.content.style.height = unitr(this.width);
     }
 
     if(this.side === LEFT){
-        this.content.style.left = '0px';
+        this.content.style.left = unitr(0);
     }else if(this.side === RIGHT){
-        this.content.style.left = '100%';
+        this.content.style.left = unitr(100, '%');
     }else if(this.side === BOTTOM){
-        this.content.style.top = '100%';
+        this.content.style.top = unitr(100, '%');
     }else if(this.side === TOP){
-        this.content.style.top = '0px';
+        this.content.style.top = unitr(0);
     }
     this.hide();
     this.update();
@@ -175,7 +176,7 @@ Flap.prototype._drag = function(interaction){
         var side = flap.side;
 
         if(!flap.beingDragged){
-            if(getPlaneForSide(side) === getPlane(angle)){
+            if(getPlaneForSide(side) !== getPlane(angle)){
                 flap.constructor.openFlap = null;
                 return;
             }
@@ -194,7 +195,7 @@ Flap.prototype._drag = function(interaction){
         }else if(flap.side === TOP){
             flap.distance = flap.startDistance + interaction.pageY - interaction.lastStart.pageY;
         }
-        flap.distance = Math.max(Math.min(flap.distance, flap.width), 0);
+        flap.distance = Math.max(Math.min(flap.distance, flap.renderedWidth()), 0);
         flap.update();
         flap.speed = flap.distance - flap.oldDistance;
         flap.oldDistance = flap.distance;
@@ -217,7 +218,7 @@ Flap.prototype._end = function(interaction){
 
     if(Math.abs(this.speed) >= 3){
         direction = this.speed < 0 ? CLOSE : OPEN;
-    }else if(this.distance < this.width / 2){
+    }else if(this.distance < this.renderedWidth() / 2){
         direction = CLOSE;
     }else{
         direction = OPEN;
@@ -279,7 +280,7 @@ Flap.prototype.update = function(interaction){
     }
 
     if(this.side === LEFT || this.side === TOP){
-        this.displayPosition = flap.distance - flap.width;
+        this.displayPosition = flap.distance - flap.renderedWidth();
     }else{
         this.displayPosition = -flap.distance;
     }
@@ -295,9 +296,9 @@ Flap.prototype.update = function(interaction){
 Flap.prototype.updateStyle = function(displayPosition){
     if(this.enabled){
         if(getPlaneForSide(this.side) === HORIZONTAL){
-            this.content.style[venfix('transform')] = 'translate3d(' + (displayPosition) + 'px,0,0)';
+            this.content.style[venfix('transform')] = 'translate3d(' + unitr(displayPosition) + ',0,0)';
         }else{
-            this.content.style[venfix('transform')] = 'translate3d(0,' + (displayPosition) + 'px,0)';
+            this.content.style[venfix('transform')] = 'translate3d(0,' + unitr(displayPosition) + ',0)';
         }
     }
 };
@@ -318,8 +319,8 @@ Flap.prototype.settle = function(direction){
         this.update();
         this.emit('settle');
         return;
-    }else if(this.distance >= this.width){
-        this.distance = this.width;
+    }else if(this.distance >= this.renderedWidth()){
+        this.distance = this.renderedWidth();
         this.update();
         this.emit('settle');
         return;
@@ -334,11 +335,11 @@ Flap.prototype.settle = function(direction){
 };
 Flap.prototype.tween = function(direction){
     return direction === OPEN ?
-        (this.width - this.distance) / 3 + 1:
+        (this.renderedWidth() - this.distance) / 3 + 1:
         this.distance / 3 + 1;
 };
 Flap.prototype.percentOpen = function(){
-    return parseInt(100 / this.width * this.distance);
+    return parseInt(100 / this.renderedWidth() * this.distance);
 };
 Flap.prototype.open = function(){
     if(!this.enabled){
@@ -352,8 +353,25 @@ Flap.prototype.close = function(){
     }
     this.settle(CLOSE);
 };
+var widthFrame;
+Flap.prototype.calculateWidth = function(){
+    if(getPlaneForSide(this.side) === HORIZONTAL){
+        this._calculatedWidth = this.content.clientWidth;
+    }else{
+        this._calculatedWidth = this.content.clientHeight;
+    }
+}
+Flap.prototype.renderedWidth = function(){
+    var flap = this;
+    cancelAnimationFrame(widthFrame);
+    widthFrame = requestAnimationFrame(this.calculateWidth.bind(this));
+    if(!('_calculatedWidth' in this)){
+        this.calculateWidth();
+    }
+    return this._calculatedWidth;
+};
 module.exports = Flap;
-},{"crel":2,"doc-js":4,"events":12,"interact-js":8,"laidout":9,"venfix":10}],2:[function(require,module,exports){
+},{"crel":2,"doc-js":4,"events":13,"interact-js":8,"laidout":9,"unitr":10,"venfix":11}],2:[function(require,module,exports){
 //Copyright (C) 2012 Kory Nunn
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
@@ -1247,6 +1265,10 @@ function setInheritedData(interaction, data){
     }
 }
 
+function getAngle(deltaPoint){
+    return Math.atan2(deltaPoint.x, -deltaPoint.y) * 180 / Math.PI;
+}
+
 function Interaction(event, interactionInfo){
     // If there is no event (eg: desktop) just make the identifier undefined
     if(!event){
@@ -1283,7 +1305,8 @@ Interaction.prototype = {
         }
 
         var lastStart = {
-                time: new Date()
+                time: new Date(),
+                phase: 'start'
             };
         setInheritedData(lastStart, interactionInfo);
         this.lastStart = lastStart;
@@ -1301,7 +1324,8 @@ Interaction.prototype = {
         }
 
         var currentTouch = {
-                time: new Date()
+                time: new Date(),
+                phase: 'move'
             };
 
         setInheritedData(currentTouch, interactionInfo);
@@ -1314,9 +1338,13 @@ Interaction.prototype = {
         // Memory saver, culls any moves that are over the maximum to keep.
         this.moves = this.moves.slice(-maximumMovesToPersist);
 
-        var lastMove = this.moves[this.moves.length-2];
-        lastMove && (currentTouch.angle = Math.atan2(currentTouch.pageY - lastMove.pageY, currentTouch.pageX - lastMove.pageX) * 180 / Math.PI);
-        this.angle = currentTouch.angle || 0;
+        var moveDelta = this.getMoveDelta(),
+            angle = 0;
+        if(moveDelta){
+            angle = getAngle(moveDelta);
+        }
+
+        this.angle = currentTouch.angle = angle;
 
         this.phase = 'move';
         interact.emit('move', event.target, event, this);
@@ -1330,7 +1358,7 @@ Interaction.prototype = {
 
         var currentTouch = {
                 time: new Date(),
-                isDrag: true
+                phase: 'drag'
             };
 
         setInheritedData(currentTouch, interactionInfo);
@@ -1351,9 +1379,13 @@ Interaction.prototype = {
             this.dragStarted = true;
         }
 
-        var lastDrag = this.moves[this.moves.length-2] || this.lastStart;
-        lastDrag && (currentTouch.angle = Math.atan2(currentTouch.pageY - lastDrag.pageY, currentTouch.pageX - lastDrag.pageX) * 180 / Math.PI);
-        this.angle = currentTouch.angle || 0;
+        var moveDelta = this.getMoveDelta(),
+            angle = 0;
+        if(moveDelta){
+            angle = getAngle(moveDelta);
+        }
+
+        this.angle = currentTouch.angle = angle;
 
         if(this.dragStarted){
             this.phase = 'drag';
@@ -1364,6 +1396,13 @@ Interaction.prototype = {
     end: function(event, interactionInfo){
         if(!interactionInfo){
             interactionInfo = event;
+        }
+
+        // Update the interaction
+        setInheritedData(this, interactionInfo);
+
+        if(!this.moves){
+            this.moves = [];
         }
 
         // Update the interaction
@@ -1396,15 +1435,17 @@ Interaction.prototype = {
         }
     },
     getMoveDelta: function(){
-        if(this.moves.length > 1){
-            var current = this.moves[this.moves.length-1],
-                previous = this.moves[this.moves.length-2];
+        var current = this.moves[this.moves.length-1],
+            previous = this.moves[this.moves.length-2] || this.lastStart;
 
-            return {
-                x: current.pageX - previous.pageX,
-                y: current.pageY - previous.pageY
-            };
+        if(!current || !previous){
+            return;
         }
+
+        return {
+            x: current.pageX - previous.pageX,
+            y: current.pageY - previous.pageY
+        };
     },
     getSpeed: function(){
         if(this.moves.length > 1){
@@ -1416,14 +1457,15 @@ Interaction.prototype = {
         return 0;
     },
     getCurrentAngle: function(blend){
-        var currentPosition,
+        var phase = this.phase,
+            currentPosition,
             lastAngle,
             i = this.moves.length-1,
             angle,
             firstAngle,
             angles = [],
             blendSteps = 20/(this.getSpeed()*2+1),
-            stepsUsed = 0;
+            stepsUsed = 1;
 
         if(this.moves && this.moves.length){
 
@@ -1431,12 +1473,16 @@ Interaction.prototype = {
             angle = firstAngle = currentPosition.angle;
 
             if(blend && this.moves.length > 1){
-                while(--i > 0 && this.moves.length - i < blendSteps){
+                while(
+                    --i > 0 &&
+                    this.moves.length - i < blendSteps &&
+                    this.moves[i].phase === phase
+                ){
                     lastAngle = this.moves[i].angle;
                     if(Math.abs(lastAngle - firstAngle) > 180){
-                        angle -= lastAngle
+                        angle -= lastAngle;
                     }else{
-                        angle += lastAngle
+                        angle += lastAngle;
                     }
                     stepsUsed++;
                 }
@@ -1577,6 +1623,38 @@ module.exports = function laidout(element, callback){
     document.addEventListener('DOMNodeInserted', recheckElement);
 };
 },{}],10:[function(require,module,exports){
+var parseRegex = /^(-?(?:\d+|\d+\.\d+|\.\d+))([^\.]*?)$/;
+
+function parse(input){
+    var valueParts = parseRegex.exec(input);
+
+    if(!valueParts){
+        return;
+    }
+
+    return {
+        value: parseFloat(valueParts[1]),
+        unit: valueParts[2]
+    };
+}
+
+function addUnit(input, unit){
+    var parsed = parse(input);
+
+    if(!parsed){
+        return input;
+    }
+
+    if(parsed.unit == null || parsed.unit == ''){
+        parsed.unit = unit || 'px';
+    }
+
+    return parsed.value + parsed.unit;
+};
+
+module.exports = addUnit;
+module.exports.parse = parse;
+},{}],11:[function(require,module,exports){
 var cache = {};
 
 function venfix(property, target){
@@ -1614,7 +1692,7 @@ function venfix(property, target){
 venfix.prefixes = ['webkit', 'moz', 'ms', 'o'];
 
 module.exports = venfix;
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 var Flap = require('./flaps'),
     doc = require('doc-js'),
     crel = require('crel'),
@@ -1667,6 +1745,7 @@ crel(bottomFlap.content,
 );
 
 topFlap.side = 'top';
+topFlap.width = '100%';
 
 crel(topFlap.content,
     crel('h1', 'A top one'),
@@ -1687,17 +1766,13 @@ leftFlap.on('open', function(){
     this.element.appendChild(this.mask);
 });
 
-rightFlap.on('move', function(){
+function fadeBackground(){
     this.element.style.background = 'rgba(0,0,0,' + this.percentOpen() / 200 + ')';
-});
+}
 
-bottomFlap.on('move', function(){
-    this.element.style.background = 'rgba(0,0,0,' + this.percentOpen() / 200 + ')';
-});
-
-topFlap.on('move', function(){
-    this.element.style.background = 'rgba(0,0,0,' + this.percentOpen() / 200 + ')';
-});
+rightFlap.on('move', fadeBackground);
+bottomFlap.on('move', fadeBackground);
+topFlap.on('move', fadeBackground);
 
 window.onload = function(){
     leftFlap.element.classList.add('flap');
@@ -1720,7 +1795,7 @@ window.onload = function(){
         doc(event.target).closest('.flap').flap.close();
     });
 };
-},{"./flaps":1,"crel":2,"doc-js":4,"venfix":10}],12:[function(require,module,exports){
+},{"./flaps":1,"crel":2,"doc-js":4,"venfix":11}],13:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2022,4 +2097,4 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}]},{},[11])
+},{}]},{},[12])

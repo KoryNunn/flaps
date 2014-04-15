@@ -3,6 +3,7 @@ var doc = require('doc-js'),
     interact = require('interact-js'),
     crel = require('crel'),
     venfix = require('venfix'),
+    unitr = require('unitr'),
     laidout = require('laidout');
 
 var LEFT = 'left';
@@ -75,10 +76,10 @@ Flap.prototype.enable = function(){
     this.enabled = true;
 
     this.element.style.position = 'fixed';
-    this.element.style.top = '0px';
-    this.element.style.bottom = '0px';
-    this.element.style.left = '0px';
-    this.element.style.right = '0px';
+    this.element.style.top = unitr(0);
+    this.element.style.bottom = unitr(0);
+    this.element.style.left = unitr(0);
+    this.element.style.right = unitr(0);
     this.close();
 
     this.content.style[venfix('boxSizing')] = 'border-box';
@@ -87,23 +88,23 @@ Flap.prototype.enable = function(){
     this.content.style['overflow-y'] = 'auto';
 
     if(getPlaneForSide(this.side) === HORIZONTAL){
-        this.content.style.top = '0px';
-        this.content.style.bottom = '0px';
-        this.content.style.width = this.width + 'px';
+        this.content.style.top = unitr(0);
+        this.content.style.bottom = unitr(0);
+        this.content.style.width = unitr(this.width);
     }else{
-        this.content.style.left = '0px';
-        this.content.style.right = '0px';
-        this.content.style.height = this.width + 'px';
+        this.content.style.left = unitr(0);
+        this.content.style.right = unitr(0);
+        this.content.style.height = unitr(this.width);
     }
 
     if(this.side === LEFT){
-        this.content.style.left = '0px';
+        this.content.style.left = unitr(0);
     }else if(this.side === RIGHT){
-        this.content.style.left = '100%';
+        this.content.style.left = unitr(100, '%');
     }else if(this.side === BOTTOM){
-        this.content.style.top = '100%';
+        this.content.style.top = unitr(100, '%');
     }else if(this.side === TOP){
-        this.content.style.top = '0px';
+        this.content.style.top = unitr(0);
     }
     this.hide();
     this.update();
@@ -193,7 +194,7 @@ Flap.prototype._drag = function(interaction){
         }else if(flap.side === TOP){
             flap.distance = flap.startDistance + interaction.pageY - interaction.lastStart.pageY;
         }
-        flap.distance = Math.max(Math.min(flap.distance, flap.width), 0);
+        flap.distance = Math.max(Math.min(flap.distance, flap.renderedWidth()), 0);
         flap.update();
         flap.speed = flap.distance - flap.oldDistance;
         flap.oldDistance = flap.distance;
@@ -216,7 +217,7 @@ Flap.prototype._end = function(interaction){
 
     if(Math.abs(this.speed) >= 3){
         direction = this.speed < 0 ? CLOSE : OPEN;
-    }else if(this.distance < this.width / 2){
+    }else if(this.distance < this.renderedWidth() / 2){
         direction = CLOSE;
     }else{
         direction = OPEN;
@@ -278,7 +279,7 @@ Flap.prototype.update = function(interaction){
     }
 
     if(this.side === LEFT || this.side === TOP){
-        this.displayPosition = flap.distance - flap.width;
+        this.displayPosition = flap.distance - flap.renderedWidth();
     }else{
         this.displayPosition = -flap.distance;
     }
@@ -294,9 +295,9 @@ Flap.prototype.update = function(interaction){
 Flap.prototype.updateStyle = function(displayPosition){
     if(this.enabled){
         if(getPlaneForSide(this.side) === HORIZONTAL){
-            this.content.style[venfix('transform')] = 'translate3d(' + (displayPosition) + 'px,0,0)';
+            this.content.style[venfix('transform')] = 'translate3d(' + unitr(displayPosition) + ',0,0)';
         }else{
-            this.content.style[venfix('transform')] = 'translate3d(0,' + (displayPosition) + 'px,0)';
+            this.content.style[venfix('transform')] = 'translate3d(0,' + unitr(displayPosition) + ',0)';
         }
     }
 };
@@ -317,8 +318,8 @@ Flap.prototype.settle = function(direction){
         this.update();
         this.emit('settle');
         return;
-    }else if(this.distance >= this.width){
-        this.distance = this.width;
+    }else if(this.distance >= this.renderedWidth()){
+        this.distance = this.renderedWidth();
         this.update();
         this.emit('settle');
         return;
@@ -333,11 +334,11 @@ Flap.prototype.settle = function(direction){
 };
 Flap.prototype.tween = function(direction){
     return direction === OPEN ?
-        (this.width - this.distance) / 3 + 1:
+        (this.renderedWidth() - this.distance) / 3 + 1:
         this.distance / 3 + 1;
 };
 Flap.prototype.percentOpen = function(){
-    return parseInt(100 / this.width * this.distance);
+    return parseInt(100 / this.renderedWidth() * this.distance);
 };
 Flap.prototype.open = function(){
     if(!this.enabled){
@@ -350,5 +351,22 @@ Flap.prototype.close = function(){
         return;
     }
     this.settle(CLOSE);
+};
+var widthFrame;
+Flap.prototype.calculateWidth = function(){
+    if(getPlaneForSide(this.side) === HORIZONTAL){
+        this._calculatedWidth = this.content.clientWidth;
+    }else{
+        this._calculatedWidth = this.content.clientHeight;
+    }
+}
+Flap.prototype.renderedWidth = function(){
+    var flap = this;
+    cancelAnimationFrame(widthFrame);
+    widthFrame = requestAnimationFrame(this.calculateWidth.bind(this));
+    if(!('_calculatedWidth' in this)){
+        this.calculateWidth();
+    }
+    return this._calculatedWidth;
 };
 module.exports = Flap;
