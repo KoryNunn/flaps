@@ -174,7 +174,7 @@ Flap.prototype._drag = function(interaction){
         var side = flap.side;
 
         if(!flap.beingDragged){
-            if(getPlaneForSide(side) === getPlane(angle)){
+            if(getPlaneForSide(side) !== getPlane(angle)){
                 flap.constructor.openFlap = null;
                 return;
             }
