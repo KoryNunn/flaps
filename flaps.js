@@ -338,7 +338,7 @@ Flap.prototype.tween = function(direction){
         this.distance / 3 + 1;
 };
 Flap.prototype.percentOpen = function(){
-    return parseInt(100 / this.renderedWidth() * this.distance);
+    return parseFloat(100 / this.renderedWidth() * this.distance);
 };
 Flap.prototype.open = function(){
     if(!this.enabled){
