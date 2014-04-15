@@ -1,6 +1,6 @@
 {
   "name": "flaps",
-  "version": "0.0.5",
+  "version": "2.0.2",
   "description": "",
   "main": "flaps.js",
   "scripts": {
@@ -9,9 +9,11 @@
   "author": "",
   "license": "BSD",
   "dependencies": {
-    "crel": "~1.1.0",
-    "doc-js": "~0.3.1",
-    "interact-js": "~0.4.0",
-    "venfix": "0.0.1"
+    "crel": "^1.1.0",
+    "doc-js": "0.4.x",
+    "interact-js": "^2.0.0",
+    "venfix": "0.0.x",
+    "laidout": "^1.0.0",
+    "unitr": "^1.0.0"
   }
 }

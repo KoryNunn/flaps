@@ -1,6 +1,6 @@
 ## Flap
 
-## Wat.
+## Wat
 
 A tiny module for creating android-like swipe-from-the-side menus.
 
@@ -16,6 +16,10 @@ Make a flap.
 Assign a side
 
     flap.side = 'right';
+
+Assign a width
+
+    flap.width = '50%';
 
 Shuv it somewhere
 
@@ -47,12 +51,13 @@ Flaps will raise a few events during their lifecycle.
  - close: The flap was just closed.
  - open: The flap is now open.
  - move: The flap's position just updated.
+ - settle: The flap just settled open or closed.
 
 If you want control over how it tweens it's position, you can overwrite the .tween function on the flap:
 
     // A really exaggerated tween
     flap.tween = function(direction){
-        var step = (this.width - this.distance) / 2 + 1;
+        var step = (this.renderedWidth() - this.distance) / 2 + 1;
         this.distance += direction === 'close' ? -step : step;
     };
 
@@ -65,8 +70,6 @@ If you want to change the flap's style in a way other than transform-x, you can 
 
 I will probably change the way flaps animate in the future to be time based rather than position based..
 
- ## Caveat
+## Caveat
 
- Works a bit shit in firefox. Pull requests welcome.
-
- Does not work in IE, I have no idea why, I didn't look into it much. Pull requests welcome.
+Works OK but not perfectly in IE >= 9, Does not work in IE <= 8. Pull requests welcome.
