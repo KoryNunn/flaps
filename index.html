@@ -5,13 +5,31 @@
     <script src="test.browser.js"></script>
     <link href="//fonts.googleapis.com/css?family=Roboto:400,300,100" rel="stylesheet">
     <style type="text/css">
+        html{
+            margin:0;
+            padding:0;
+        }
         body{
+            margin:0;
+            padding:0;
             font: 400 16px/1.667 "Roboto",sans-serif;
             color: #555;
             line-height: 28px;
             user-select: none;
             -webkit-user-select: none;
             -webkit-tap-highlight-color:  transparent;
+        }
+        .wrapper{
+            -webkit-perspective: 1000px;
+            -moz-perspective: 1000px;
+            -ms-perspective: 1000px;
+            -o-perspective: 1000px;
+            perspective: 1000px;
+            position: absolute;
+            top:0;
+            left:0;
+            right:0;
+            bottom:0;
         }
         h1{
             font-weight: 200;
@@ -57,6 +75,7 @@
         .main{
             text-align: center;
             line-height: 40px;
+            padding:20px;
         }
         .main h1{
             font-size: 40px;
@@ -110,6 +129,7 @@
     </style>
 </head>
 <body>
+    <div class="wrapper">
     <a href="https://github.com/KoryNunn/flap"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"></a>
     <section class="main">
         <button class="openFlap left">Open Left Flap</button>
@@ -124,5 +144,6 @@
 
         Swipe in from a side test them out. (Click-drag on a desktop, or click the open flap buttons above)
     </section>
+    </div>
 </body>
 </html>

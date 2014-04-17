@@ -53,6 +53,7 @@ Flap.prototype.bind = function(){
 
     // Allow starting the drag on a delegate target
     interact.on('start', delegateTarget, flap._start.bind(flap));
+    interact.on('start', this.content, flap._start.bind(flap));
 
     // Still use document for the other events for robustness.
     interact.on('drag', document, flap._drag.bind(flap));
