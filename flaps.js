@@ -68,8 +68,9 @@ Flap.prototype.init = function(){
         }else{
             flap.disable();
         }
-        flap.emit('ready');
+        flap.updateStyle();
         flap.element.style.opacity = null;
+        flap.emit('ready');
     });
 };
 Flap.prototype.enable = function(){
@@ -354,20 +355,11 @@ Flap.prototype.close = function(){
     this.settle(CLOSE);
 };
 var widthFrame;
-Flap.prototype.calculateWidth = function(){
-    if(getPlaneForSide(this.side) === HORIZONTAL){
-        this._calculatedWidth = this.content.clientWidth;
-    }else{
-        this._calculatedWidth = this.content.clientHeight;
-    }
-}
 Flap.prototype.renderedWidth = function(){
-    var flap = this;
-    cancelAnimationFrame(widthFrame);
-    widthFrame = requestAnimationFrame(this.calculateWidth.bind(this));
-    if(!('_calculatedWidth' in this)){
-        this.calculateWidth();
+    if(getPlaneForSide(this.side) === HORIZONTAL){
+        return this.content.clientWidth;
+    }else{
+        return this.content.clientHeight;
     }
-    return this._calculatedWidth;
 };
 module.exports = Flap;
