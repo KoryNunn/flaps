@@ -69,8 +69,9 @@ Flap.prototype.init = function(){
         }else{
             flap.disable();
         }
-        flap.emit('ready');
+        flap.updateStyle();
         flap.element.style.opacity = null;
+        flap.emit('ready');
     });
 };
 Flap.prototype.enable = function(){
@@ -112,6 +113,7 @@ Flap.prototype.enable = function(){
 };
 Flap.prototype.disable = function(){
     this.enabled = false;
+    this.distance = 0;
 
     this.element.style.position = null;
     this.element.style.top = null;
@@ -339,7 +341,7 @@ Flap.prototype.tween = function(direction){
         this.distance / 3 + 1;
 };
 Flap.prototype.percentOpen = function(){
-    return parseInt(100 / this.renderedWidth() * this.distance);
+    return parseFloat(100 / this.renderedWidth() * this.distance) || 0;
 };
 Flap.prototype.open = function(){
     if(!this.enabled){
@@ -354,21 +356,12 @@ Flap.prototype.close = function(){
     this.settle(CLOSE);
 };
 var widthFrame;
-Flap.prototype.calculateWidth = function(){
-    if(getPlaneForSide(this.side) === HORIZONTAL){
-        this._calculatedWidth = this.content.clientWidth;
-    }else{
-        this._calculatedWidth = this.content.clientHeight;
-    }
-}
 Flap.prototype.renderedWidth = function(){
-    var flap = this;
-    cancelAnimationFrame(widthFrame);
-    widthFrame = requestAnimationFrame(this.calculateWidth.bind(this));
-    if(!('_calculatedWidth' in this)){
-        this.calculateWidth();
+    if(getPlaneForSide(this.side) === HORIZONTAL){
+        return this.content.clientWidth;
+    }else{
+        return this.content.clientHeight;
     }
-    return this._calculatedWidth;
 };
 module.exports = Flap;
 },{"crel":2,"doc-js":4,"events":13,"interact-js":8,"laidout":9,"unitr":10,"venfix":11}],2:[function(require,module,exports){
@@ -1748,7 +1741,7 @@ topFlap.side = 'top';
 topFlap.width = '100%';
 
 crel(topFlap.content,
-    crel('h1', 'A top one'),
+    crel('h1', 'A full-height top one'),
     crel('p',
         'stuff'
     )
