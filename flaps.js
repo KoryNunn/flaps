@@ -149,13 +149,13 @@ Flap.prototype._isValidInteraction = function(interaction){
         return true;
     }
     if(this.side === LEFT){
-        return interaction.pageX < this.distance + this.gutter;
+        return interaction.pageX - window.scrollX < this.distance + this.gutter;
     }else if(this.side === RIGHT){
-        return interaction.pageX > window.innerWidth - this.gutter;
+        return interaction.pageX - window.scrollX > window.innerWidth - this.gutter;
     }else if(this.side === BOTTOM){
-        return interaction.pageY > window.innerHeight - this.gutter;
+        return interaction.pageY - window.scrollY > window.innerHeight - this.gutter;
     }else if(this.side === TOP){
-        return interaction.pageY < this.distance + this.gutter;
+        return interaction.pageY - window.scrollY < this.distance + this.gutter;
     }
 };
 Flap.prototype._start = function(interaction){
