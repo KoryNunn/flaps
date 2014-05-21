@@ -165,6 +165,8 @@ Flap.prototype._start = function(interaction){
         return;
     }
 
+    this._interactionStarted = true;
+
     if(this._isValidInteraction(interaction)){
         this._setOpen();
     }
@@ -204,6 +206,7 @@ Flap.prototype._drag = function(interaction){
     }
 };
 Flap.prototype._end = function(interaction){
+    this._interactionStarted = false;
     if(this.constructor.openFlap !== this){
         return;
     }
@@ -344,13 +347,13 @@ Flap.prototype.percentOpen = function(){
     return parseFloat(100 / this.renderedWidth() * this.distance) || 0;
 };
 Flap.prototype.open = function(){
-    if(!this.enabled){
+    if(!this.enabled || this._interactionStarted){
         return;
     }
     this.settle(OPEN);
 };
 Flap.prototype.close = function(){
-    if(!this.enabled){
+    if(!this.enabled || this._interactionStarted){
         return;
     }
     this.settle(CLOSE);
