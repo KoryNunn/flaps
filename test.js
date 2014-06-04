@@ -41,9 +41,9 @@ crel(rightFlap.content,
 );
 
 bottomFlap.side = 'bottom';
-bottomFlap.gutter = window.innerHeight - 30;
+bottomFlap.gutter = window.innerHeight;
 doc(window).on('resize', function(){
-    bottomFlap.gutter = window.innerHeight - 30;
+    bottomFlap.gutter = window.innerHeight;
 });
 
 crel(bottomFlap.content,
@@ -55,6 +55,10 @@ crel(bottomFlap.content,
 
 topFlap.side = 'top';
 topFlap.width = '100%';
+topFlap.gutter = window.innerHeight;
+doc(window).on('resize', function(){
+    topFlap.gutter = window.innerHeight;
+});
 
 crel(topFlap.content,
     crel('h1', 'A full-height top one'),

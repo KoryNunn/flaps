@@ -2,6 +2,7 @@
 var doc = require('doc-js'),
     EventEmitter = require('events').EventEmitter,
     interact = require('interact-js'),
+    pythagoreanEquation = require('math-js/geometry/pythagoreanEquation'),
     crel = require('crel'),
     venfix = require('venfix'),
     unitr = require('unitr'),
@@ -16,19 +17,213 @@ var LEFT = 'left';
     CLOSE = 'close'
     HORIZONTAL = 'horizontal',
     VERTICAL = 'vertical',
-    CLOSE = 'close';
+    CLOSE = 'close',
+    NE = 45,
+    NW = -45,
+    SE = 135,
+    SW = -135,
+    opposites = {};
+
+opposites[LEFT] = RIGHT;
+opposites[RIGHT] = LEFT;
+opposites[TOP] = BOTTOM;
+opposites[BOTTOM] = TOP;
+
+var allFlaps = [],
+    openStack = [];
+
+function getSideForAngle(angle){
+    return angle > SW ?
+        angle > NW ?
+            angle > NE ?
+                angle > SE ? BOTTOM : RIGHT :
+            TOP :
+        LEFT :
+    BOTTOM;
+}
 
 function getPlane(angle){
-    return ((angle > 45 && angle < 135) || (angle < -45 && angle > -135)) ? HORIZONTAL : VERTICAL;
+    return ((angle > NE && angle < SE) || (angle < NW && angle > SW)) ? HORIZONTAL : VERTICAL;
 }
 
 function getPlaneForSide(side){
     return (side === LEFT || side === RIGHT) ? HORIZONTAL : VERTICAL;
 }
 
+function getFlapBoxInfo(flap){
+    var targetElement = flap.distance ? flap.element : flap.content,
+        boundingRect = targetElement.getBoundingClientRect(),
+        gutter = flap.gutter,
+        box = {
+            left: boundingRect.left,
+            marginLeft: boundingRect.left,
+            top: boundingRect.top,
+            marginTop: boundingRect.top,
+            right: boundingRect.right,
+            marginRight: boundingRect.right,
+            bottom: boundingRect.bottom,
+            marginBottom: boundingRect.bottom,
+            width: boundingRect.width,
+            marginWidth: boundingRect.width,
+            height: boundingRect.height,
+            marginHeight: boundingRect.height
+        }
+
+    if(flap.side === LEFT){
+        box.marginWidth += gutter;
+        box.marginRight += gutter;
+    }else if(flap.side === RIGHT){
+        box.marginWidth += gutter;
+        box.marginLeft -= gutter;
+    }else if(flap.side === BOTTOM){
+        box.marginHeight += gutter;
+        box.marginTop -= gutter;
+    }else if(flap.side === TOP){
+        box.marginHeight += gutter;
+        box.marginBottom += gutter;
+    }
+
+    return box;
+}
+
+function bound(min, max, value){
+    return Math.min(Math.max(value, min), max);
+}
+
+function getDistanceFromInteraction(interaction, flapInfo){
+    var horizontalBound = bound.bind(null, window.scrollX, window.innerWidth + window.scrollX),
+        verticalBound = bound.bind(null, window.scrollY, window.innerHeight + window.scrollY);
+
+    return pythagoreanEquation(
+        interaction.pageX - horizontalBound(flapInfo.box.marginLeft + flapInfo.box.marginWidth) - horizontalBound(flapInfo.box.marginWidth) / 2,
+        interaction.pageY - verticalBound(flapInfo.box.marginTop + flapInfo.box.marginHeight) - verticalBound(flapInfo.box.marginHeight) / 2
+    );
+}
+
+function getWorthyness(interaction, flapInfo1, flapInfo2){
+    var interactionProximity = getDistanceFromInteraction(interaction, flapInfo2) - getDistanceFromInteraction(interaction, flapInfo1);
+
+    return interactionProximity;
+}
+
+function getCandidatesForInteraction(interaction,flaps){
+    return flaps.reduce(function(results, flap) {
+        var box = getFlapBoxInfo(flap),
+            angle = interaction.getCurrentAngle(true);
+
+        if(
+            !flap.beingDragged &&
+            getPlaneForSide(flap.side) === getPlane(angle) &&
+            interaction.pageX > box.marginLeft &&
+            interaction.pageX < box.marginRight &&
+            interaction.pageY > box.marginTop &&
+            interaction.pageY < box.marginBottom
+        ){
+            results.push({
+                box: box,
+                flap: flap
+            });
+        }
+
+
+        return results;
+
+    }, []);
+}
+
+function moveableCandidates(interaction, candidate){
+    var angle = interaction.getCurrentAngle(true),
+        plane = getPlane(angle),
+        flap = candidate.flap,
+        side = flap.side,
+        distance = flap.distance,
+        maxPosition = flap.renderedWidth(),
+        minPosition = 0;
+
+    if(distance > minPosition && distance < maxPosition){
+        return true;
+    }
+
+    var canMoveDirection = distance === minPosition ? opposites[side] : side;
+
+    return canMoveDirection === getSideForAngle(angle);
+}
+
+function setLastInList(array, item){
+    var index = array.indexOf(item);
+
+    if(index>=0){
+        array.splice(index, 1);
+        array.push(item);
+    }
+}
+
+function setFirstInList(array, item){
+    var index = array.indexOf(item);
+
+    if(index>=0){
+        array.splice(index, 1);
+        array.unshift(item);
+    }
+}
+
+function delegateInteraction(interaction){
+    var candidates = getCandidatesForInteraction(interaction, allFlaps),
+        moveable = candidates.filter(moveableCandidates.bind(null, interaction));
+
+    if(moveable.length){
+        candidates = moveable;
+    }
+
+    var flapCandidate = candidates
+        .sort(getWorthyness.bind(null, interaction))
+        .pop();
+
+    if(!flapCandidate){
+        return;
+    }
+
+    interaction.preventDefault();
+
+    interaction._flap = flapCandidate.flap;
+    flapCandidate.flap._start(interaction);
+}
+
+function bindEvents(){
+    interact.on('drag', document, function(interaction){
+        if(!interaction._flap){
+            delegateInteraction(interaction);
+        }else{
+            interaction._flap._drag(interaction);
+        }
+    });
+
+    function endInteraction(interaction){
+        if(interaction._flap){
+            interaction._flap._end(interaction);
+            interaction._flap = null;
+        }else{
+            var i = allFlaps.length;
+            while (i) {
+                i--;
+                if(allFlaps[i].state === OPEN){
+                    allFlaps[i]._activate(interaction.originalEvent);
+                    i=0;
+                }
+            };
+        }
+    }
+
+    interact.on('end', document, endInteraction);
+    interact.on('cancel', document, endInteraction);
+}
+
+bindEvents();
+
 function Flap(element){
     this.render(element);
     this.init();
+    allFlaps.push(this);
 }
 Flap.prototype = Object.create(EventEmitter.prototype);
 
@@ -37,8 +232,15 @@ Flap.prototype.distance = 0;
 Flap.prototype.state = CLOSED;
 Flap.prototype.width = 280;
 Flap.prototype.side = LEFT;
-Flap.prototype.gutter = 20;
+Flap.prototype.gutter = 50;
 
+Flap.prototype.destroy = function(){
+    var index = allFlaps.indexOf(this);
+
+    if(index >= 0){
+        allFlaps.splice(index, 1);
+    }
+};
 Flap.prototype.render = function(element){
     this.element = element || crel('div',
         crel('div')
@@ -48,23 +250,9 @@ Flap.prototype.render = function(element){
     this.content = this.element.childNodes[0];
     this.element.flap = this;
 };
-Flap.prototype.bind = function(){
-    var flap = this,
-        delegateTarget = doc(this.delegateTarget)[0] || document;
-
-    // Allow starting the drag on a delegate target
-    interact.on('start', delegateTarget, flap._start.bind(flap));
-    interact.on('start', this.content, flap._start.bind(flap));
-
-    // Still use document for the other events for robustness.
-    interact.on('drag', document, flap._drag.bind(flap));
-    interact.on('end', document, flap._end.bind(flap));
-    interact.on('cancel', document, flap._end.bind(flap));
-};
 Flap.prototype.init = function(){
     var flap = this;
     laidout(this.element, function(){
-        flap.bind();
         if(this.enabled !== false){
             flap.enable();
         }else{
@@ -142,72 +330,34 @@ Flap.prototype.disable = function(){
     this.show();
     this.update();
 };
-Flap.prototype._isValidInteraction = function(interaction){
-    if(this.constructor.openFlap){
-        return this.constructor.openFlap === this;
-    }
-    if(this.distance){
-        return true;
-    }
-    if(this.side === LEFT){
-        return interaction.pageX < this.distance + this.gutter;
-    }else if(this.side === RIGHT){
-        return interaction.pageX > window.innerWidth - this.gutter;
-    }else if(this.side === BOTTOM){
-        return interaction.pageY > window.innerHeight - this.gutter;
-    }else if(this.side === TOP){
-        return interaction.pageY < this.distance + this.gutter;
-    }
-};
 Flap.prototype._start = function(interaction){
-    var flap = this;
-
-    if(!this.enabled){
-        return;
-    }
-
-    if(this._isValidInteraction(interaction)){
-        this._setOpen();
-    }
+    this._interactionStarted = true;
+    this._setOpen();
 };
 Flap.prototype._drag = function(interaction){
     var flap = this;
 
-    if(flap.constructor.openFlap === flap){
-        var angle = interaction.getCurrentAngle(true);
+    var side = flap.side;
 
-        var side = flap.side;
-
-        if(!flap.beingDragged){
-            if(getPlaneForSide(side) !== getPlane(angle)){
-                flap.constructor.openFlap = null;
-                return;
-            }
-        }
-
-        interaction.preventDefault();
-
-        flap.beingDragged = true;
-        flap.startDistance = flap.startDistance || flap.distance;
-        if(flap.side === LEFT){
-            flap.distance = flap.startDistance + interaction.pageX - interaction.lastStart.pageX;
-        }else if(flap.side === RIGHT){
-            flap.distance = flap.startDistance - interaction.pageX + interaction.lastStart.pageX;
-        }else if(flap.side === BOTTOM){
-            flap.distance = flap.startDistance - interaction.pageY + interaction.lastStart.pageY;
-        }else if(flap.side === TOP){
-            flap.distance = flap.startDistance + interaction.pageY - interaction.lastStart.pageY;
-        }
-        flap.distance = Math.max(Math.min(flap.distance, flap.renderedWidth()), 0);
-        flap.update();
-        flap.speed = flap.distance - flap.oldDistance;
-        flap.oldDistance = flap.distance;
+    flap.beingDragged = true;
+    flap.startDistance = flap.startDistance || flap.distance;
+    if(flap.side === LEFT){
+        flap.distance = flap.startDistance + interaction.pageX - interaction.lastStart.pageX;
+    }else if(flap.side === RIGHT){
+        flap.distance = flap.startDistance - interaction.pageX + interaction.lastStart.pageX;
+    }else if(flap.side === BOTTOM){
+        flap.distance = flap.startDistance - interaction.pageY + interaction.lastStart.pageY;
+    }else if(flap.side === TOP){
+        flap.distance = flap.startDistance + interaction.pageY - interaction.lastStart.pageY;
     }
+    flap.distance = Math.max(Math.min(flap.distance, flap.renderedWidth()), 0);
+    flap.update();
+    flap.speed = flap.distance - flap.oldDistance;
+    flap.oldDistance = flap.distance;
 };
 Flap.prototype._end = function(interaction){
-    if(this.constructor.openFlap !== this){
-        return;
-    }
+    this._interactionStarted = false;
+
     if(!this.beingDragged){
         this.settle(this.distance <= 0 ? CLOSE : OPEN);
         this._activate(interaction);
@@ -234,8 +384,7 @@ Flap.prototype._activate = function(event){
         return;
     }
     if(
-        !doc(event.target).closest(this.content) &&
-        this.constructor.openFlap === this
+        !doc(event.target).closest(this.content)
     ){
         event.preventDefault();
         this.beingDragged = false;
@@ -243,19 +392,17 @@ Flap.prototype._activate = function(event){
     }
 };
 Flap.prototype._setOpen = function(){
-    if(this.constructor.openFlap !== this){
-        var flap = this;
-        this.constructor.openFlap = this;
-        this.show();
-        this.state = OPEN;
-        this.emit(OPEN);
+    var flap = this;
+    this.show();
+    this.state = OPEN;
+    setLastInList(allFlaps, this);
+    this.emit(OPEN);
 
-        // This prevents the flap from screwing up
-        // events on elements that may be under the swipe zone
-        this._pointerEventTimeout = setTimeout(function(){
-            flap.element.style[venfix('pointerEvents')] = 'all';
-        },500);
-    }
+    // This prevents the flap from screwing up
+    // events on elements that may be under the swipe zone
+    this._pointerEventTimeout = setTimeout(function(){
+        flap.element.style[venfix('pointerEvents')] = 'all';
+    },500);
 };
 Flap.prototype.hide = function(){
     if(this.element.style.visibility !== 'hidden'){
@@ -268,12 +415,12 @@ Flap.prototype.show = function(){
     }
 };
 Flap.prototype._setClosed = function(){
-    this.constructor.openFlap = null;
     clearTimeout(this._pointerEventTimeout);
     this.element.style[venfix('pointerEvents')] = 'none';
     this.hide();
     this.state = CLOSED;
     this.emit(CLOSE);
+    setFirstInList(allFlaps, this);
 };
 Flap.prototype.update = function(interaction){
     var flap = this;
@@ -345,13 +492,13 @@ Flap.prototype.percentOpen = function(){
     return parseFloat(100 / this.renderedWidth() * this.distance) || 0;
 };
 Flap.prototype.open = function(){
-    if(!this.enabled){
+    if(!this.enabled || this._interactionStarted){
         return;
     }
     this.settle(OPEN);
 };
 Flap.prototype.close = function(){
-    if(!this.enabled){
+    if(!this.enabled || this._interactionStarted){
         return;
     }
     this.settle(CLOSE);
@@ -365,7 +512,7 @@ Flap.prototype.renderedWidth = function(){
     }
 };
 module.exports = Flap;
-},{"crel":2,"doc-js":4,"events":13,"interact-js":8,"laidout":9,"unitr":10,"venfix":11}],2:[function(require,module,exports){
+},{"crel":2,"doc-js":4,"events":14,"interact-js":8,"laidout":9,"math-js/geometry/pythagoreanEquation":10,"unitr":11,"venfix":12}],2:[function(require,module,exports){
 //Copyright (C) 2012 Kory Nunn
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
@@ -1617,6 +1764,10 @@ module.exports = function laidout(element, callback){
     document.addEventListener('DOMNodeInserted', recheckElement);
 };
 },{}],10:[function(require,module,exports){
+module.exports = function(sideA, sideB){
+    return Math.sqrt(Math.pow(sideA, 2) + Math.pow(sideB, 2));
+}
+},{}],11:[function(require,module,exports){
 var parseRegex = /^(-?(?:\d+|\d+\.\d+|\.\d+))([^\.]*?)$/;
 
 function parse(input){
@@ -1648,7 +1799,7 @@ function addUnit(input, unit){
 
 module.exports = addUnit;
 module.exports.parse = parse;
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 var cache = {};
 
 function venfix(property, target){
@@ -1686,7 +1837,7 @@ function venfix(property, target){
 venfix.prefixes = ['webkit', 'moz', 'ms', 'o'];
 
 module.exports = venfix;
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 var Flap = require('./flaps'),
     doc = require('doc-js'),
     crel = require('crel'),
@@ -1730,9 +1881,9 @@ crel(rightFlap.content,
 );
 
 bottomFlap.side = 'bottom';
-bottomFlap.gutter = window.innerHeight - 30;
+bottomFlap.gutter = window.innerHeight;
 doc(window).on('resize', function(){
-    bottomFlap.gutter = window.innerHeight - 30;
+    bottomFlap.gutter = window.innerHeight;
 });
 
 crel(bottomFlap.content,
@@ -1744,6 +1895,10 @@ crel(bottomFlap.content,
 
 topFlap.side = 'top';
 topFlap.width = '100%';
+topFlap.gutter = window.innerHeight;
+doc(window).on('resize', function(){
+    topFlap.gutter = window.innerHeight;
+});
 
 crel(topFlap.content,
     crel('h1', 'A full-height top one'),
@@ -1803,7 +1958,7 @@ window.onload = function(){
         doc(event.target).closest('.flap').flap.close();
     });
 };
-},{"./flaps":1,"crel":2,"doc-js":4,"venfix":11}],13:[function(require,module,exports){
+},{"./flaps":1,"crel":2,"doc-js":4,"venfix":12}],14:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2105,4 +2260,4 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}]},{},[12])
+},{}]},{},[13])
