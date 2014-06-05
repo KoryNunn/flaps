@@ -205,8 +205,12 @@ function bindEvents(){
             var i = allFlaps.length;
             while (i) {
                 i--;
-                if(allFlaps[i].state === OPEN){
-                    allFlaps[i]._activate(interaction.originalEvent);
+                var flap = allFlaps[i];
+                if(flap.state === OPEN){
+                    if(doc(interaction.target).closest(flap.element)){
+                        flap._activate(interaction.originalEvent);
+                    }
+                }else{
                     i=0;
                 }
             };
@@ -330,7 +334,7 @@ Flap.prototype.disable = function(){
     this.update();
 };
 Flap.prototype._start = function(interaction){
-    this._interactionStarted = true;
+    this._interaction = interaction;
     this._setOpen();
 };
 Flap.prototype._drag = function(interaction){
@@ -355,13 +359,7 @@ Flap.prototype._drag = function(interaction){
     flap.oldDistance = flap.distance;
 };
 Flap.prototype._end = function(interaction){
-    this._interactionStarted = false;
-
-    if(!this.beingDragged){
-        this.settle(this.distance <= 0 ? CLOSE : OPEN);
-        this._activate(interaction);
-        return;
-    }
+    this._interaction = null;
 
     this.startDistance = null;
     this.beingDragged = false;
@@ -383,6 +381,7 @@ Flap.prototype._activate = function(event){
         return;
     }
     if(
+        !this.beingDragged &&
         !doc(event.target).closest(this.content)
     ){
         event.preventDefault();
@@ -491,13 +490,13 @@ Flap.prototype.percentOpen = function(){
     return parseFloat(100 / this.renderedWidth() * this.distance) || 0;
 };
 Flap.prototype.open = function(){
-    if(!this.enabled || this._interactionStarted){
+    if(!this.enabled || this._interaction){
         return;
     }
     this.settle(OPEN);
 };
 Flap.prototype.close = function(){
-    if(!this.enabled || this._interactionStarted){
+    if(!this.enabled || this._interaction){
         return;
     }
     this.settle(CLOSE);
