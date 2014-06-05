@@ -186,6 +186,42 @@ function delegateInteraction(interaction){
 
     interaction._flap = flapCandidate.flap;
     flapCandidate.flap._start(interaction);
+
+    var i = allFlaps.length;
+    while (i) {
+        i--;
+        var flap = allFlaps[i];
+        if(flap.state === OPEN){
+            if(
+                flap !== flapCandidate.flap &&
+                !doc(flapCandidate.flap.element).closest(flap.element)
+            ){
+                flap._activate(interaction.originalEvent);
+            }
+        }else{
+            i=0;
+        }
+    };
+}
+
+function endInteraction(interaction){
+    if(interaction._flap){
+        interaction._flap._end(interaction);
+        interaction._flap = null;
+    }else{
+        var i = allFlaps.length;
+        while (i) {
+            i--;
+            var flap = allFlaps[i];
+            if(flap.state === OPEN){
+                if(doc(interaction.target).closest(flap.element)){
+                    flap._activate(interaction.originalEvent);
+                }
+            }else{
+                i=0;
+            }
+        };
+    }
 }
 
 function bindEvents(){
@@ -196,26 +232,6 @@ function bindEvents(){
             interaction._flap._drag(interaction);
         }
     });
-
-    function endInteraction(interaction){
-        if(interaction._flap){
-            interaction._flap._end(interaction);
-            interaction._flap = null;
-        }else{
-            var i = allFlaps.length;
-            while (i) {
-                i--;
-                var flap = allFlaps[i];
-                if(flap.state === OPEN){
-                    if(doc(interaction.target).closest(flap.element)){
-                        flap._activate(interaction.originalEvent);
-                    }
-                }else{
-                    i=0;
-                }
-            };
-        }
-    }
 
     interact.on('end', document, endInteraction);
     interact.on('cancel', document, endInteraction);
