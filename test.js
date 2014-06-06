@@ -86,7 +86,7 @@ function fadeBackground(){
 rightFlap.on('move', fadeBackground);
 topFlap.on('move', fadeBackground);
 bottomFlap.on('move', function(){
-    // Lets go nuts..
+    // Let's go nuts..
     var openness = this.percentOpen() / 100;
     this.element.style.background = 'rgba(0,0,0,' + openness / 10 + ')';
     this.content.style['box-shadow'] = '0px 0px ' + (50 * openness) + 'px rgba(0,0,0,' + openness / 3 + ')';

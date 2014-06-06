@@ -113,10 +113,10 @@ function getCandidatesForInteraction(interaction,flaps){
         if(
             !flap.beingDragged &&
             getPlaneForSide(flap.side) === getPlane(angle) &&
-            interaction.pageX > box.marginLeft &&
-            interaction.pageX < box.marginRight &&
-            interaction.pageY > box.marginTop &&
-            interaction.pageY < box.marginBottom
+            interaction.pageX - window.scrollX > box.marginLeft &&
+            interaction.pageX - window.scrollX < box.marginRight &&
+            interaction.pageY - window.scrollY > box.marginTop &&
+            interaction.pageY - window.scrollY < box.marginBottom
         ){
             results.push({
                 box: box,
