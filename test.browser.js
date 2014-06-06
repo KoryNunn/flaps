@@ -197,7 +197,7 @@ function delegateInteraction(interaction){
                 flap !== flapCandidate.flap &&
                 !doc(flapCandidate.flap.element).closest(flap.element)
             ){
-                flap._activate(interaction.originalEvent);
+                flap.close();
             }
         }else{
             i=0;
