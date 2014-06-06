@@ -12,8 +12,9 @@
     "crel": "^1.1.0",
     "doc-js": "0.4.x",
     "interact-js": "^2.0.0",
-    "venfix": "0.0.x",
     "laidout": "^1.0.0",
-    "unitr": "^1.0.0"
+    "math-js": "^1.0.0",
+    "unitr": "^1.0.0",
+    "venfix": "0.0.x"
   }
 }
