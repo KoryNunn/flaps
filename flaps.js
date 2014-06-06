@@ -166,7 +166,30 @@ function setFirstInList(array, item){
     }
 }
 
+function forEachOpenFlap(fn){
+    var i = allFlaps.length;
+    while (i) {
+        i--;
+        var flap = allFlaps[i];
+        if(flap.state === OPEN){
+            fn(flap);
+        }else{
+            break;
+        }
+    };
+}
+
 function delegateInteraction(interaction){
+    if(interaction._flap){
+        interaction._flap._drag(interaction);
+    }
+
+    if(interaction._delegated){
+        return;
+    }
+
+    interaction._delegated = true;
+
     var candidates = getCandidatesForInteraction(interaction, allFlaps),
         moveable = candidates.filter(moveableCandidates.bind(null, interaction));
 
@@ -187,21 +210,14 @@ function delegateInteraction(interaction){
     interaction._flap = flapCandidate.flap;
     flapCandidate.flap._start(interaction);
 
-    var i = allFlaps.length;
-    while (i) {
-        i--;
-        var flap = allFlaps[i];
-        if(flap.state === OPEN){
-            if(
-                flap !== flapCandidate.flap &&
-                !doc(flapCandidate.flap.element).closest(flap.element)
-            ){
-                flap.close();
-            }
-        }else{
-            i=0;
+    forEachOpenFlap(function(flap){
+        if(
+            flap !== flapCandidate.flap &&
+            !doc(flapCandidate.flap.element).closest(flap.element)
+        ){
+            flap.close();
         }
-    };
+    });
 }
 
 function endInteraction(interaction){
@@ -209,30 +225,16 @@ function endInteraction(interaction){
         interaction._flap._end(interaction);
         interaction._flap = null;
     }else{
-        var i = allFlaps.length;
-        while (i) {
-            i--;
-            var flap = allFlaps[i];
-            if(flap.state === OPEN){
-                if(doc(interaction.target).closest(flap.element)){
-                    flap._activate(interaction.originalEvent);
-                }
-            }else{
-                i=0;
+        forEachOpenFlap(function(flap){
+            if(doc(interaction.target).closest(flap.element)){
+                flap._activate(interaction.originalEvent);
             }
-        };
+        });
     }
 }
 
 function bindEvents(){
-    interact.on('drag', document, function(interaction){
-        if(!interaction._flap){
-            delegateInteraction(interaction);
-        }else{
-            interaction._flap._drag(interaction);
-        }
-    });
-
+    interact.on('drag', document, delegateInteraction);
     interact.on('end', document, endInteraction);
     interact.on('cancel', document, endInteraction);
 }
@@ -350,10 +352,18 @@ Flap.prototype.disable = function(){
     this.update();
 };
 Flap.prototype._start = function(interaction){
+    if(!this.enabled){
+        return;
+    }
+
     this._interaction = interaction;
     this._setOpen();
 };
 Flap.prototype._drag = function(interaction){
+    if(!this.enabled){
+        return;
+    }
+
     var flap = this;
 
     var side = flap.side;
@@ -375,6 +385,10 @@ Flap.prototype._drag = function(interaction){
     flap.oldDistance = flap.distance;
 };
 Flap.prototype._end = function(interaction){
+    if(!this.enabled){
+        return;
+    }
+
     this._interaction = null;
 
     this.startDistance = null;
@@ -396,6 +410,7 @@ Flap.prototype._activate = function(event){
     if(!this.enabled){
         return;
     }
+
     if(
         !this.beingDragged &&
         !doc(event.target).closest(this.content)
