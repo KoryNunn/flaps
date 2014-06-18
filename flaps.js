@@ -366,8 +366,6 @@ Flap.prototype._drag = function(interaction){
 
     var flap = this;
 
-    var side = flap.side;
-
     flap.beingDragged = true;
     flap.startDistance = flap.startDistance || flap.distance;
     if(flap.side === LEFT){
