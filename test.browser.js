@@ -227,9 +227,9 @@ function endInteraction(interaction){
         interaction._flap = null;
     }else{
         forEachOpenFlap(function(flap){
-            if(doc(interaction.target).closest(flap.element)){
+            //if(doc(interaction.target).closest(flap.element)){
                 flap._activate(interaction.originalEvent);
-            }
+            //}
         });
     }
 }

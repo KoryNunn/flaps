@@ -226,9 +226,9 @@ function endInteraction(interaction){
         interaction._flap = null;
     }else{
         forEachOpenFlap(function(flap){
-            if(doc(interaction.target).closest(flap.element)){
+            //if(doc(interaction.target).closest(flap.element)){
                 flap._activate(interaction.originalEvent);
-            }
+            //}
         });
     }
 }
@@ -365,6 +365,8 @@ Flap.prototype._drag = function(interaction){
     }
 
     var flap = this;
+
+    var side = flap.side;
 
     flap.beingDragged = true;
     flap.startDistance = flap.startDistance || flap.distance;
