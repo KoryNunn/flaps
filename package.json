@@ -10,11 +10,11 @@
   "license": "BSD",
   "dependencies": {
     "crel": "^1.1.0",
-    "doc-js": "0.4.x",
+    "doc-js": "1.0.0",
     "interact-js": "^2.0.0",
     "laidout": "^1.0.0",
     "math-js": "^1.0.0",
     "unitr": "^1.0.0",
-    "venfix": "0.0.x"
+    "venfix": "^1.0.0"
   }
 }
