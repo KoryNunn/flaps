@@ -429,6 +429,7 @@ Flap.prototype._setOpen = function(){
 
     // This prevents the flap from screwing up
     // events on elements that may be under the swipe zone
+    clearTimeout(this._pointerEventTimeout);
     this._pointerEventTimeout = setTimeout(function(){
         flap.element.style[venfix('pointerEvents')] = 'all';
     },500);
