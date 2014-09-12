@@ -239,7 +239,9 @@ function bindEvents(){
     interact.on('cancel', document, endInteraction);
 }
 
-bindEvents();
+if(typeof window !== 'undefined'){
+    bindEvents();
+}
 
 function Flap(element){
     this.render(element);
