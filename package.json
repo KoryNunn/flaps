@@ -10,7 +10,7 @@
   "license": "BSD",
   "dependencies": {
     "crel": "^1.1.0",
-    "doc-js": "1.0.0",
+    "doc-js": "^1.0.0",
     "interact-js": "^2.0.0",
     "laidout": "^1.0.0",
     "math-js": "^1.0.0",
