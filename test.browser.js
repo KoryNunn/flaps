@@ -1,4 +1,4 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 var doc = require('doc-js'),
     EventEmitter = require('events').EventEmitter,
     interact = require('interact-js'),
@@ -240,7 +240,9 @@ function bindEvents(){
     interact.on('cancel', document, endInteraction);
 }
 
-bindEvents();
+if(typeof window !== 'undefined'){
+    bindEvents();
+}
 
 function Flap(element){
     this.render(element);
@@ -430,6 +432,7 @@ Flap.prototype._setOpen = function(){
 
     // This prevents the flap from screwing up
     // events on elements that may be under the swipe zone
+    clearTimeout(this._pointerEventTimeout);
     this._pointerEventTimeout = setTimeout(function(){
         flap.element.style[venfix('pointerEvents')] = 'all';
     },500);
@@ -588,27 +591,30 @@ module.exports = Flap;
         root.crel = factory();
     }
 }(this, function () {
-    // based on http://stackoverflow.com/questions/384286/javascript-isdom-how-do-you-check-if-a-javascript-object-is-a-dom-object
-    var isNode = typeof Node === 'function'
-        ? function (object) { return object instanceof Node; }
-        : function (object) {
-            return object
-                && typeof object === 'object'
-                && typeof object.nodeType === 'number'
-                && typeof object.nodeName === 'string';
+    var fn = 'function',
+        isElement = typeof Element === fn ? function (object) {
+            return object instanceof Element;
+        } :
+        // in IE <= 8 Element is an object, obviously..
+        function(object){
+            return object &&
+                (typeof object==="object") &&
+                (object.nodeType===1) &&
+                (typeof object.ownerDocument ==="object");
+        },
+        isArray = function(a){
+            return a instanceof Array;
+        },
+        appendChild = function(element, child) {
+          if(!isElement(child)){
+              child = document.createTextNode(child);
+          }
+          element.appendChild(child);
         };
-    var isArray = function(a){ return a instanceof Array; };
-    var appendChild = function(element, child) {
-      if(!isNode(child)){
-          child = document.createTextNode(child);
-      }
-      element.appendChild(child);
-    };
 
 
     function crel(){
-        var document = window.document,
-            args = arguments, //Note: assigned to a variable to assist compilers. Saves about 40 bytes in closure compiler. Has negligable effect on performance.
+        var args = arguments, //Note: assigned to a variable to assist compilers. Saves about 40 bytes in closure compiler. Has negligable effect on performance.
             element = args[0],
             child,
             settings = args[1],
@@ -616,13 +622,13 @@ module.exports = Flap;
             argumentsLength = args.length,
             attributeMap = crel.attrMap;
 
-        element = isNode(element) ? element : document.createElement(element);
+        element = crel.isElement(element) ? element : document.createElement(element);
         // shortcut
         if(argumentsLength === 1){
             return element;
         }
 
-        if(typeof settings !== 'object' || isNode(settings) || isArray(settings)) {
+        if(typeof settings !== 'object' || crel.isElement(settings) || isArray(settings)) {
             --childIndex;
             settings = null;
         }
@@ -653,7 +659,7 @@ module.exports = Flap;
                 element.setAttribute(key, settings[key]);
             }else{
                 var attr = crel.attrMap[key];
-                if(typeof attr === 'function'){
+                if(typeof attr === fn){
                     attr(element, settings[key]);
                 }else{
                     element.setAttribute(attr, settings[key]);
@@ -669,7 +675,7 @@ module.exports = Flap;
     crel['attrMap'] = {};
 
     // String referenced so that compilers maintain the property name.
-    crel["isNode"] = isNode;
+    crel["isElement"] = isElement;
 
     return crel;
 }));
@@ -1231,16 +1237,22 @@ function floc(target){
     return new Floc(instance);
 }
 
+var returnsSelf = 'addClass removeClass append prepend'.split(' ');
+
 for(var key in doc){
     if(typeof doc[key] === 'function'){
         floc[key] = doc[key];
         flocProto[key] = (function(key){
+            var instance = this;
             // This is also extremely dodgy and fast
             return function(a,b,c,d,e,f){
                 var result = doc[key](this, a,b,c,d,e,f);
 
                 if(result !== doc && isList(result)){
                     return floc(result);
+                }
+                if(returnsSelf.indexOf(key) >=0){
+                    return instance;
                 }
                 return result;
             };
@@ -1266,6 +1278,16 @@ flocProto.off = function(events, target, callback){
         reference = null;
     }
     doc.off(events, target, callback, reference);
+    return this;
+};
+
+flocProto.addClass = function(className){
+    doc.addClass(this, className);
+    return this;
+};
+
+flocProto.removeClass = function(className){
+    doc.removeClass(this, className);
     return this;
 };
 
@@ -1315,9 +1337,11 @@ module.exports = function(document){
 module.exports = function isList(object){
     return object !== window && (
         object instanceof Array ||
-        (typeof HTMLCollection !== 'undefined' && object instanceof HTMLCollection) ||
-        (typeof NodeList !== 'undefined' && object instanceof NodeList) ||
-        Array.isArray(object)
+        (typeof HTMLCollection === 'function' && object instanceof HTMLCollection) ||
+        (typeof NodeList === 'function' && object instanceof NodeList) ||
+        Array.isArray(object) ||
+        ''+object === '[object StaticNodeList]' ||
+        ''+object === '[object HTMLCollection]'
     );
 }
 
@@ -1814,17 +1838,27 @@ function parse(input){
 }
 
 function addUnit(input, unit){
-    var parsed = parse(input);
+    var parsedInput = parse(input),
+        parsedUnit = parse(unit);
 
-    if(!parsed){
+    if(!parsedInput && parsedUnit){
+        unit = input;
+        parsedInput = parsedUnit;
+    }
+
+    if(!isNaN(unit)){
+        unit = null;
+    }
+
+    if(!parsedInput){
         return input;
     }
 
-    if(parsed.unit == null || parsed.unit == ''){
-        parsed.unit = unit || 'px';
+    if(parsedInput.unit == null || parsedInput.unit == ''){
+        parsedInput.unit = unit || 'px';
     }
 
-    return parsed.value + parsed.unit;
+    return parsedInput.value + parsedInput.unit;
 };
 
 module.exports = addUnit;
@@ -2048,10 +2082,8 @@ EventEmitter.prototype.emit = function(type) {
       er = arguments[1];
       if (er instanceof Error) {
         throw er; // Unhandled 'error' event
-      } else {
-        throw TypeError('Uncaught, unspecified "error" event.');
       }
-      return false;
+      throw TypeError('Uncaught, unspecified "error" event.');
     }
   }
 
@@ -2136,7 +2168,10 @@ EventEmitter.prototype.addListener = function(type, listener) {
                     'leak detected. %d listeners added. ' +
                     'Use emitter.setMaxListeners() to increase limit.',
                     this._events[type].length);
-      console.trace();
+      if (typeof console.trace === 'function') {
+        // not supported in IE 10
+        console.trace();
+      }
     }
   }
 
@@ -2290,4 +2325,4 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}]},{},[13])
+},{}]},{},[13]);
