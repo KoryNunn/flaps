@@ -50,8 +50,7 @@ function getPlaneForSide(side){
 }
 
 function getFlapBoxInfo(flap){
-    var targetElement = flap.distance ? flap.element : flap.content,
-        boundingRect = targetElement.getBoundingClientRect(),
+    var boundingRect = flap.getBoundingRect(),
         gutter = flap.gutter,
         box = {
             left: boundingRect.left,
@@ -535,12 +534,24 @@ Flap.prototype.close = function(){
     }
     this.settle(CLOSE);
 };
-var widthFrame;
+var widthFrame,
+    lastTime = 0;
 Flap.prototype.renderedWidth = function(){
-    if(getPlaneForSide(this.side) === HORIZONTAL){
-        return this.content.clientWidth;
-    }else{
-        return this.content.clientHeight;
+    var now = Date.now();
+
+    if(widthFrame === null || now - lastTime > 16){
+        if(getPlaneForSide(this.side) === HORIZONTAL){
+            return widthFrame = this.content.clientWidth;
+        }else{
+            return widthFrame = this.content.clientHeight;
+        }
     }
+
+    return widthFrame;
+};
+Flap.prototype.getBoundingRect = function() {
+    var targetElement = this.distance ? this.element : this.content;
+
+    return targetElement.getBoundingClientRect();
 };
 module.exports = Flap;
