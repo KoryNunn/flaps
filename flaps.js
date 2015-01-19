@@ -540,6 +540,7 @@ Flap.prototype.renderedWidth = function(){
     var now = Date.now();
 
     if(widthFrame === null || now - lastTime > 16){
+        lastTime = now;
         if(getPlaneForSide(this.side) === HORIZONTAL){
             return widthFrame = this.content.clientWidth;
         }else{
