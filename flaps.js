@@ -7,13 +7,13 @@ var doc = require('doc-js'),
     unitr = require('unitr'),
     laidout = require('laidout');
 
-var LEFT = 'left';
-    RIGHT = 'right';
-    BOTTOM = 'bottom';
+var LEFT = 'left',
+    RIGHT = 'right',
+    BOTTOM = 'bottom',
     TOP = 'top',
     CLOSED = 'closed',
     OPEN = 'open',
-    CLOSE = 'close'
+    CLOSE = 'close',
     HORIZONTAL = 'horizontal',
     VERTICAL = 'vertical',
     CLOSE = 'close',
@@ -28,8 +28,7 @@ opposites[RIGHT] = LEFT;
 opposites[TOP] = BOTTOM;
 opposites[BOTTOM] = TOP;
 
-var allFlaps = [],
-    openStack = [];
+var allFlaps = [];
 
 function getSideForAngle(angle){
     return angle > SW ?
@@ -65,7 +64,7 @@ function getFlapBoxInfo(flap){
             marginWidth: boundingRect.width,
             height: boundingRect.height,
             marginHeight: boundingRect.height
-        }
+        };
 
     if(flap.side === LEFT){
         box.marginWidth += gutter;
@@ -131,7 +130,6 @@ function getCandidatesForInteraction(interaction,flaps){
 
 function moveableCandidates(interaction, candidate){
     var angle = interaction.getCurrentAngle(true),
-        plane = getPlane(angle),
         flap = candidate.flap,
         side = flap.side,
         distance = flap.distance,
@@ -175,7 +173,7 @@ function forEachOpenFlap(fn){
         }else{
             break;
         }
-    };
+    }
 }
 
 function delegateInteraction(interaction){
@@ -367,8 +365,6 @@ Flap.prototype._drag = function(interaction){
 
     var flap = this;
 
-    var side = flap.side;
-
     flap.beingDragged = true;
     flap.startDistance = flap.startDistance || flap.distance;
     if(flap.side === LEFT){
@@ -384,8 +380,9 @@ Flap.prototype._drag = function(interaction){
     flap.update();
     flap.speed = flap.distance - flap.oldDistance;
     flap.oldDistance = flap.distance;
+
 };
-Flap.prototype._end = function(interaction){
+Flap.prototype._end = function(){
     if(!this.enabled){
         return;
     }
@@ -433,7 +430,7 @@ Flap.prototype._setOpen = function(){
     clearTimeout(this._pointerEventTimeout);
     this._pointerEventTimeout = setTimeout(function(){
         flap.element.style[venfix('pointerEvents')] = 'all';
-    },500);
+    },100);
 };
 Flap.prototype.hide = function(){
     if(this.element.style.visibility !== 'hidden'){
@@ -453,7 +450,7 @@ Flap.prototype._setClosed = function(){
     this.emit(CLOSE);
     setFirstInList(allFlaps, this);
 };
-Flap.prototype.update = function(interaction){
+Flap.prototype.update = function(){
     var flap = this;
 
     if(this.distance > 0){
@@ -555,4 +552,5 @@ Flap.prototype.getBoundingRect = function() {
 
     return targetElement.getBoundingClientRect();
 };
+
 module.exports = Flap;
