@@ -273,7 +273,7 @@ Flap.prototype.render = function(element){
 Flap.prototype.init = function(){
     var flap = this;
     laidout(this.element, function(){
-        if(this.enabled !== false){
+        if(flap.enabled !== false){
             flap.enable();
         }else{
             flap.disable();
