@@ -301,11 +301,11 @@ Flap.prototype.enable = function(){
     if(getPlaneForSide(this.side) === HORIZONTAL){
         this.content.style.top = unitr(0);
         this.content.style.bottom = unitr(0);
-        this.content.style.width = unitr(this.width);
+        this.content.style.width = unitr(this._getWidth());
     }else{
         this.content.style.left = unitr(0);
         this.content.style.right = unitr(0);
-        this.content.style.height = unitr(this.width);
+        this.content.style.height = unitr(this._getWidth());
     }
 
     if(this.side === LEFT){
@@ -349,6 +349,10 @@ Flap.prototype.disable = function(){
 
     this.show();
     this.update();
+};
+Flap.prototype._getWidth = function() {
+    var maxWidth = window.getComputedStyle(this.content, null)['max-width'];
+    return maxWidth || this.width;
 };
 Flap.prototype._start = function(interaction){
     if(!this.enabled){
