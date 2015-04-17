@@ -109,6 +109,7 @@ function getCandidatesForInteraction(interaction,flaps){
             angle = interaction.getCurrentAngle(true);
 
         if(
+            flap.isValidInteraction(interaction) &&
             !flap.beingDragged &&
             getPlaneForSide(flap.side) === getPlane(angle) &&
             interaction.pageX - window.scrollX > box.marginLeft &&
@@ -551,6 +552,9 @@ Flap.prototype.getBoundingRect = function() {
     var targetElement = this.distance ? this.element : this.content;
 
     return targetElement.getBoundingClientRect();
+};
+Flap.prototype.isValidInteraction = function(interaction) {
+    return true;
 };
 
 module.exports = Flap;
