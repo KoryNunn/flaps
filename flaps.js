@@ -420,6 +420,11 @@ Flap.prototype._activate = function(event){
 };
 Flap.prototype._setOpen = function(){
     var flap = this;
+
+    if(this.state === OPEN){
+        return;
+    }
+    
     this.show();
     this.state = OPEN;
     setLastInList(allFlaps, this);
