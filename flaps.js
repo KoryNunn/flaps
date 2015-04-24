@@ -454,10 +454,6 @@ Flap.prototype._setClosed = function(){
 Flap.prototype.update = function(){
     var flap = this;
 
-    if(this.distance > 0){
-        this._setOpen();
-    }
-
     if(this.side === LEFT || this.side === TOP){
         this.displayPosition = flap.distance - flap.renderedWidth();
     }else{
@@ -466,6 +462,9 @@ Flap.prototype.update = function(){
 
     if(flap.distance != flap.lastDistance){
         requestAnimationFrame(function(){
+            if(flap.distance > 0){
+                flap._setOpen();
+            }
             flap.updateStyle(flap.displayPosition);
             flap.emit('move');
             flap.lastDistance = flap.distance;
