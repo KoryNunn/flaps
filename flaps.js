@@ -279,7 +279,7 @@ Flap.prototype.init = function(){
         }else{
             flap.disable();
         }
-        flap.updateStyle();
+        flap.update();
         flap.element.style.opacity = null;
         flap.emit('ready');
     });
