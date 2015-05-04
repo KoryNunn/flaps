@@ -456,22 +456,22 @@ Flap.prototype._setClosed = function(){
     setFirstInList(allFlaps, this);
 };
 Flap.prototype.update = function(){
-    var flap = this;
+    var flap = this,
+        lastDisplayPosition = this.displayPosition;
 
     if(this.side === LEFT || this.side === TOP){
-        this.displayPosition = flap.distance - flap.renderedWidth();
+        this.displayPosition = this.distance - this.renderedWidth();
     }else{
-        this.displayPosition = -flap.distance;
+        this.displayPosition = -this.distance;
     }
 
-    if(flap.distance != flap.lastDistance){
+    if(this.displayPosition !== lastDisplayPosition){
         requestAnimationFrame(function(){
             if(flap.distance > 0){
                 flap._setOpen();
             }
             flap.updateStyle(flap.displayPosition);
             flap.emit('move');
-            flap.lastDistance = flap.distance;
         });
     }
 };
@@ -540,7 +540,7 @@ var widthFrame,
 Flap.prototype.renderedWidth = function(){
     var now = Date.now();
 
-    if(widthFrame === null || now - lastTime > 16){
+    if(!widthFrame || now - lastTime > 16){
         lastTime = now;
         if(getPlaneForSide(this.side) === HORIZONTAL){
             return widthFrame = this.content.clientWidth;
