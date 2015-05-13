@@ -424,7 +424,7 @@ Flap.prototype._setOpen = function(){
     if(this.state === OPEN){
         return;
     }
-    
+
     this.show();
     this.state = OPEN;
     setLastInList(allFlaps, this);
@@ -535,21 +535,20 @@ Flap.prototype.close = function(){
     }
     this.settle(CLOSE);
 };
-var widthFrame,
-    lastTime = 0;
+
 Flap.prototype.renderedWidth = function(){
     var now = Date.now();
 
-    if(!widthFrame || now - lastTime > 16){
-        lastTime = now;
+    if(!this._widthFrame || now - this._lastWidthTime > 16){
+        this._lastWidthTime = now;
         if(getPlaneForSide(this.side) === HORIZONTAL){
-            return widthFrame = this.content.clientWidth;
+            return this._widthFrame = this.content.clientWidth;
         }else{
-            return widthFrame = this.content.clientHeight;
+            return this._widthFrame = this.content.clientHeight;
         }
     }
 
-    return widthFrame;
+    return this._widthFrame;
 };
 Flap.prototype.getBoundingRect = function() {
     var targetElement = this.distance ? this.element : this.content;
