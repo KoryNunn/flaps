@@ -211,7 +211,8 @@ function delegateInteraction(interaction){
     forEachOpenFlap(function(flap){
         if(
             flap !== flapCandidate.flap &&
-            !doc(flapCandidate.flap.element).closest(flap.element)
+            !doc(flapCandidate.flap.element).closest(flap.element) &&
+            flap.isValidInteraction()
         ){
             flap.close();
         }
@@ -224,9 +225,7 @@ function endInteraction(interaction){
         interaction._flap = null;
     }else{
         forEachOpenFlap(function(flap){
-            //if(doc(interaction.target).closest(flap.element)){
-                flap._activate(interaction.originalEvent);
-            //}
+            flap._activate(interaction);
         });
     }
 }
@@ -405,7 +404,7 @@ Flap.prototype._end = function(){
     this.settle(direction);
 };
 Flap.prototype._activate = function(event){
-    if(!this.enabled){
+    if(!this.enabled || !this.isValidInteraction(event)){
         return;
     }
 
