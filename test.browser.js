@@ -1,4 +1,4 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"/home/kory/dev/flaps/flaps.js":[function(require,module,exports){
 var doc = require('doc-js'),
     EventEmitter = require('events').EventEmitter,
     interact = require('interact-js'),
@@ -6,15 +6,16 @@ var doc = require('doc-js'),
     crel = require('crel'),
     venfix = require('venfix'),
     unitr = require('unitr'),
+    schedule = require('schedule-frame'),
     laidout = require('laidout');
 
-var LEFT = 'left';
-    RIGHT = 'right';
-    BOTTOM = 'bottom';
+var LEFT = 'left',
+    RIGHT = 'right',
+    BOTTOM = 'bottom',
     TOP = 'top',
     CLOSED = 'closed',
     OPEN = 'open',
-    CLOSE = 'close'
+    CLOSE = 'close',
     HORIZONTAL = 'horizontal',
     VERTICAL = 'vertical',
     CLOSE = 'close',
@@ -29,8 +30,7 @@ opposites[RIGHT] = LEFT;
 opposites[TOP] = BOTTOM;
 opposites[BOTTOM] = TOP;
 
-var allFlaps = [],
-    openStack = [];
+var allFlaps = [];
 
 function getSideForAngle(angle){
     return angle > SW ?
@@ -51,8 +51,7 @@ function getPlaneForSide(side){
 }
 
 function getFlapBoxInfo(flap){
-    var targetElement = flap.distance ? flap.element : flap.content,
-        boundingRect = targetElement.getBoundingClientRect(),
+    var boundingRect = flap.getBoundingRect(),
         gutter = flap.gutter,
         box = {
             left: boundingRect.left,
@@ -67,7 +66,7 @@ function getFlapBoxInfo(flap){
             marginWidth: boundingRect.width,
             height: boundingRect.height,
             marginHeight: boundingRect.height
-        }
+        };
 
     if(flap.side === LEFT){
         box.marginWidth += gutter;
@@ -112,6 +111,7 @@ function getCandidatesForInteraction(interaction,flaps){
             angle = interaction.getCurrentAngle(true);
 
         if(
+            flap.isValidInteraction(interaction) &&
             !flap.beingDragged &&
             getPlaneForSide(flap.side) === getPlane(angle) &&
             interaction.pageX - window.scrollX > box.marginLeft &&
@@ -133,7 +133,6 @@ function getCandidatesForInteraction(interaction,flaps){
 
 function moveableCandidates(interaction, candidate){
     var angle = interaction.getCurrentAngle(true),
-        plane = getPlane(angle),
         flap = candidate.flap,
         side = flap.side,
         distance = flap.distance,
@@ -177,7 +176,7 @@ function forEachOpenFlap(fn){
         }else{
             break;
         }
-    };
+    }
 }
 
 function delegateInteraction(interaction){
@@ -277,12 +276,12 @@ Flap.prototype.render = function(element){
 Flap.prototype.init = function(){
     var flap = this;
     laidout(this.element, function(){
-        if(this.enabled !== false){
+        if(flap.enabled !== false){
             flap.enable();
         }else{
             flap.disable();
         }
-        flap.updateStyle();
+        flap.update();
         flap.element.style.opacity = null;
         flap.emit('ready');
     });
@@ -360,7 +359,6 @@ Flap.prototype._start = function(interaction){
     }
 
     this._interaction = interaction;
-    this._setOpen();
 };
 Flap.prototype._drag = function(interaction){
     if(!this.enabled){
@@ -368,8 +366,6 @@ Flap.prototype._drag = function(interaction){
     }
 
     var flap = this;
-
-    var side = flap.side;
 
     flap.beingDragged = true;
     flap.startDistance = flap.startDistance || flap.distance;
@@ -386,8 +382,9 @@ Flap.prototype._drag = function(interaction){
     flap.update();
     flap.speed = flap.distance - flap.oldDistance;
     flap.oldDistance = flap.distance;
+
 };
-Flap.prototype._end = function(interaction){
+Flap.prototype._end = function(){
     if(!this.enabled){
         return;
     }
@@ -425,6 +422,11 @@ Flap.prototype._activate = function(event){
 };
 Flap.prototype._setOpen = function(){
     var flap = this;
+
+    if(this.state === OPEN){
+        return;
+    }
+    
     this.show();
     this.state = OPEN;
     setLastInList(allFlaps, this);
@@ -435,7 +437,7 @@ Flap.prototype._setOpen = function(){
     clearTimeout(this._pointerEventTimeout);
     this._pointerEventTimeout = setTimeout(function(){
         flap.element.style[venfix('pointerEvents')] = 'all';
-    },500);
+    },100);
 };
 Flap.prototype.hide = function(){
     if(this.element.style.visibility !== 'hidden'){
@@ -455,25 +457,24 @@ Flap.prototype._setClosed = function(){
     this.emit(CLOSE);
     setFirstInList(allFlaps, this);
 };
-Flap.prototype.update = function(interaction){
-    var flap = this;
-
-    if(this.distance > 0){
-        this._setOpen();
-    }
+Flap.prototype.update = function(){
+    var flap = this,
+        lastDisplayPosition = this.displayPosition;
 
     if(this.side === LEFT || this.side === TOP){
-        this.displayPosition = flap.distance - flap.renderedWidth();
+        this.displayPosition = this.distance - this.renderedWidth();
     }else{
-        this.displayPosition = -flap.distance;
+        this.displayPosition = -this.distance;
     }
 
-    if(flap.distance != flap.lastDistance){
-        requestAnimationFrame(function(){
+    if(this.displayPosition !== lastDisplayPosition){
+        schedule(function(){
+            if(flap.distance > 0){
+                flap._setOpen();
+            }
             flap.updateStyle(flap.displayPosition);
             flap.emit('move');
-            flap.lastDistance = flap.distance;
-        });
+        }, this);
     }
 };
 Flap.prototype.updateStyle = function(displayPosition){
@@ -536,16 +537,33 @@ Flap.prototype.close = function(){
     }
     this.settle(CLOSE);
 };
-var widthFrame;
+var widthFrame,
+    lastTime = 0;
 Flap.prototype.renderedWidth = function(){
-    if(getPlaneForSide(this.side) === HORIZONTAL){
-        return this.content.clientWidth;
-    }else{
-        return this.content.clientHeight;
+    var now = Date.now();
+
+    if(!widthFrame || now - lastTime > 16){
+        lastTime = now;
+        if(getPlaneForSide(this.side) === HORIZONTAL){
+            return widthFrame = this.content.clientWidth;
+        }else{
+            return widthFrame = this.content.clientHeight;
+        }
     }
+
+    return widthFrame;
 };
+Flap.prototype.getBoundingRect = function() {
+    var targetElement = this.distance ? this.element : this.content;
+
+    return targetElement.getBoundingClientRect();
+};
+Flap.prototype.isValidInteraction = function(interaction) {
+    return true;
+};
+
 module.exports = Flap;
-},{"crel":2,"doc-js":4,"events":14,"interact-js":8,"laidout":9,"math-js/geometry/pythagoreanEquation":10,"unitr":11,"venfix":12}],2:[function(require,module,exports){
+},{"crel":"/home/kory/dev/flaps/node_modules/crel/crel.js","doc-js":"/home/kory/dev/flaps/node_modules/doc-js/fluent.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js","interact-js":"/home/kory/dev/flaps/node_modules/interact-js/interact.js","laidout":"/home/kory/dev/flaps/node_modules/laidout/index.js","math-js/geometry/pythagoreanEquation":"/home/kory/dev/flaps/node_modules/math-js/geometry/pythagoreanEquation.js","schedule-frame":"/home/kory/dev/flaps/node_modules/schedule-frame/index.js","unitr":"/home/kory/dev/flaps/node_modules/unitr/unitr.js","venfix":"/home/kory/dev/flaps/node_modules/venfix/venfix.js"}],"/home/kory/dev/flaps/node_modules/crel/crel.js":[function(require,module,exports){
 //Copyright (C) 2012 Kory Nunn
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
@@ -680,7 +698,7 @@ module.exports = Flap;
     return crel;
 }));
 
-},{}],3:[function(require,module,exports){
+},{}],"/home/kory/dev/flaps/node_modules/doc-js/doc.js":[function(require,module,exports){
 var doc = {
     document: typeof document !== 'undefined' ? document : null,
     setDocument: function(d){
@@ -1212,7 +1230,7 @@ doc.isVisible = isVisible;
 doc.ready = ready;
 
 module.exports = doc;
-},{"./getTarget":5,"./getTargets":6,"./isList":7}],4:[function(require,module,exports){
+},{"./getTarget":"/home/kory/dev/flaps/node_modules/doc-js/getTarget.js","./getTargets":"/home/kory/dev/flaps/node_modules/doc-js/getTargets.js","./isList":"/home/kory/dev/flaps/node_modules/doc-js/isList.js"}],"/home/kory/dev/flaps/node_modules/doc-js/fluent.js":[function(require,module,exports){
 var doc = require('./doc'),
     isList = require('./isList'),
     getTargets = require('./getTargets')(doc.document),
@@ -1292,7 +1310,7 @@ flocProto.removeClass = function(className){
 };
 
 module.exports = floc;
-},{"./doc":3,"./getTargets":6,"./isList":7}],5:[function(require,module,exports){
+},{"./doc":"/home/kory/dev/flaps/node_modules/doc-js/doc.js","./getTargets":"/home/kory/dev/flaps/node_modules/doc-js/getTargets.js","./isList":"/home/kory/dev/flaps/node_modules/doc-js/isList.js"}],"/home/kory/dev/flaps/node_modules/doc-js/getTarget.js":[function(require,module,exports){
 var singleId = /^#\w+$/;
 
 module.exports = function(document){
@@ -1307,7 +1325,7 @@ module.exports = function(document){
         return target;
     };
 };
-},{}],6:[function(require,module,exports){
+},{}],"/home/kory/dev/flaps/node_modules/doc-js/getTargets.js":[function(require,module,exports){
 
 var singleClass = /^\.\w+$/,
     singleId = /^#\w+$/,
@@ -1333,7 +1351,7 @@ module.exports = function(document){
         return target;
     };
 };
-},{}],7:[function(require,module,exports){
+},{}],"/home/kory/dev/flaps/node_modules/doc-js/isList.js":[function(require,module,exports){
 module.exports = function isList(object){
     return object !== window && (
         object instanceof Array ||
@@ -1345,7 +1363,7 @@ module.exports = function isList(object){
     );
 }
 
-},{}],8:[function(require,module,exports){
+},{}],"/home/kory/dev/flaps/node_modules/interact-js/interact.js":[function(require,module,exports){
 var interactions = [],
     minMoveDistance = 5,
     interact,
@@ -1788,7 +1806,7 @@ function addEvent(element, type, callback) {
 }
 
 module.exports = interact;
-},{}],9:[function(require,module,exports){
+},{}],"/home/kory/dev/flaps/node_modules/laidout/index.js":[function(require,module,exports){
 function checkElement(element){
     if(!element){
         return false;
@@ -1817,11 +1835,50 @@ module.exports = function laidout(element, callback){
 
     document.addEventListener('DOMNodeInserted', recheckElement);
 };
-},{}],10:[function(require,module,exports){
+},{}],"/home/kory/dev/flaps/node_modules/math-js/geometry/pythagoreanEquation.js":[function(require,module,exports){
 module.exports = function(sideA, sideB){
     return Math.sqrt(Math.pow(sideA, 2) + Math.pow(sideB, 2));
 }
-},{}],11:[function(require,module,exports){
+},{}],"/home/kory/dev/flaps/node_modules/schedule-frame/index.js":[function(require,module,exports){
+var todo = [],
+    todoKeys = [];
+
+function run(){
+    var startTime = Date.now();
+
+    while(todo.length){
+        todoKeys.shift();
+        todo.shift()();
+    }
+}
+
+function schedule(fn, key){
+    if(arguments.length < 2){
+        key = fn;
+    }
+
+    if(typeof fn !== 'function'){
+        throw 'schedule must be passed a function as the first parameter';
+    }
+
+    var keyIndex = todoKeys.indexOf(key)
+
+    if(~keyIndex){ 
+        // Replace task for key
+        todo.splice(keyIndex, 1, fn);
+        return;
+    }
+
+    if(todo.length === 0){
+        requestAnimationFrame(run);
+    }
+
+    todo.push(fn);
+    todoKeys.push(key);
+}
+
+module.exports = schedule;
+},{}],"/home/kory/dev/flaps/node_modules/unitr/unitr.js":[function(require,module,exports){
 var parseRegex = /^(-?(?:\d+|\d+\.\d+|\.\d+))([^\.]*?)$/;
 
 function parse(input){
@@ -1863,12 +1920,38 @@ function addUnit(input, unit){
 
 module.exports = addUnit;
 module.exports.parse = parse;
-},{}],12:[function(require,module,exports){
-var cache = {};
+},{}],"/home/kory/dev/flaps/node_modules/venfix/venfix.js":[function(require,module,exports){
+var cache = {},
+    bodyStyle = {};
+
+if(typeof window !== 'undefined'){
+    if(window.document.body){
+        getBodyStyleProperties();
+    }else{
+        window.addEventListener('load', getBodyStyleProperties);
+    }
+}
+
+function getBodyStyleProperties(){
+    var shortcuts = {},
+        items = document.defaultView.getComputedStyle(document.body);
+
+    for(var i = 0; i < items.length; i++){
+        bodyStyle[items[i]] = null;
+
+        // This is kinda dodgy but it works.
+        baseName = items[i].match(/^(\w+)-.*$/);
+        if(baseName){
+            if(shortcuts[baseName[1]]){
+                bodyStyle[baseName[1]] = null;
+            }else{
+                shortcuts[baseName[1]] = true;
+            }
+        }
+    }
+}
 
 function venfix(property, target){
-    var bodyStyle = document.body.style;
-
     if(!target && cache[property]){
         return cache[property];
     }
@@ -1878,6 +1961,7 @@ function venfix(property, target){
     var props = [];
 
     for(var key in target){
+        cache[key] = key;
         props.push(key);
     }
 
@@ -1885,23 +1969,27 @@ function venfix(property, target){
         return property;
     }
 
-    var propertyRegex = new RegExp('^(' + venfix.prefixes.join('|') + ')' + property + '$', 'i');
+    var propertyRegex = new RegExp('^(-(?:' + venfix.prefixes.join('|') + ')-)' + property + '(?:$|-)', 'i');
 
     for(var i = 0; i < props.length; i++) {
-        if(props[i].match(propertyRegex)){
+        var match = props[i].match(propertyRegex);
+        if(match){
+            var result = match[1] + property;
             if(target === bodyStyle){
-                cache[property] = props[i]
+                cache[property] = result
             }
-            return props[i];
+            return result;
         }
     }
+
+    return property;
 }
 
 // Add extensibility
 venfix.prefixes = ['webkit', 'moz', 'ms', 'o'];
 
 module.exports = venfix;
-},{}],13:[function(require,module,exports){
+},{}],"/home/kory/dev/flaps/test.js":[function(require,module,exports){
 var Flap = require('./flaps'),
     doc = require('doc-js'),
     crel = require('crel'),
@@ -1958,7 +2046,6 @@ crel(bottomFlap.content,
 );
 
 topFlap.side = 'top';
-topFlap.width = '100%';
 topFlap.gutter = window.innerHeight;
 doc(window).on('resize', function(){
     topFlap.gutter = window.innerHeight;
@@ -2022,7 +2109,7 @@ window.onload = function(){
         doc(event.target).closest('.flap').flap.close();
     });
 };
-},{"./flaps":1,"crel":2,"doc-js":4,"venfix":12}],14:[function(require,module,exports){
+},{"./flaps":"/home/kory/dev/flaps/flaps.js","crel":"/home/kory/dev/flaps/node_modules/crel/crel.js","doc-js":"/home/kory/dev/flaps/node_modules/doc-js/fluent.js","venfix":"/home/kory/dev/flaps/node_modules/venfix/venfix.js"}],"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js":[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2325,4 +2412,4 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}]},{},[13]);
+},{}]},{},["/home/kory/dev/flaps/test.js"]);

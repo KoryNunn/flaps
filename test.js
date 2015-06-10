@@ -54,7 +54,6 @@ crel(bottomFlap.content,
 );
 
 topFlap.side = 'top';
-topFlap.width = '100%';
 topFlap.gutter = window.innerHeight;
 doc(window).on('resize', function(){
     topFlap.gutter = window.innerHeight;

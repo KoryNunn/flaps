@@ -5,6 +5,7 @@ var doc = require('doc-js'),
     crel = require('crel'),
     venfix = require('venfix'),
     unitr = require('unitr'),
+    schedule = require('schedule-frame'),
     laidout = require('laidout');
 
 var LEFT = 'left',
@@ -466,13 +467,13 @@ Flap.prototype.update = function(){
     }
 
     if(this.displayPosition !== lastDisplayPosition){
-        requestAnimationFrame(function(){
+        schedule(function(){
             if(flap.distance > 0){
                 flap._setOpen();
             }
             flap.updateStyle(flap.displayPosition);
             flap.emit('move');
-        });
+        }, this);
     }
 };
 Flap.prototype.updateStyle = function(displayPosition){
