@@ -362,6 +362,8 @@ Flap.prototype._drag = function(interaction){
     if(!this.enabled){
         return;
     }
+    
+    interaction.preventDefault();
 
     var flap = this;
 
