@@ -10,6 +10,10 @@
   },
   "author": "",
   "license": "BSD",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KoryNunn/flap.git"
+  },
   "dependencies": {
     "crel": "^2.1.2",
     "doc-js": "^1.0.0",
