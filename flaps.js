@@ -281,6 +281,7 @@ Flap.prototype.init = function(){
         }
         flap.update();
         flap.element.style.opacity = null;
+        flap._ready = true;
         flap.emit('ready');
     });
 };
@@ -362,7 +363,7 @@ Flap.prototype._drag = function(interaction){
     if(!this.enabled){
         return;
     }
-    
+
     interaction.preventDefault();
 
     var flap = this;
@@ -468,12 +469,13 @@ Flap.prototype.update = function(){
     }
 
     if(this.displayPosition !== lastDisplayPosition){
+        flap.emit('move');
+
         schedule(function(){
             if(flap.distance > 0){
                 flap._setOpen();
             }
             flap.updateStyle(flap.displayPosition);
-            flap.emit('move');
         }, this);
     }
 };
@@ -541,7 +543,7 @@ Flap.prototype.close = function(){
 Flap.prototype.renderedWidth = function(){
     var now = Date.now();
 
-    if(!this._widthFrame || now - this._lastWidthTime > 16){
+    if(!this._ready || !this._widthFrame || now - this._lastWidthTime > 16){
         this._lastWidthTime = now;
         if(getPlaneForSide(this.side) === HORIZONTAL){
             return this._widthFrame = this.content.clientWidth;
