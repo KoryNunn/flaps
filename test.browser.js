@@ -1,4 +1,4 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 var doc = require('doc-js'),
     EventEmitter = require('events').EventEmitter,
     interact = require('interact-js'),
@@ -6,15 +6,16 @@ var doc = require('doc-js'),
     crel = require('crel'),
     venfix = require('venfix'),
     unitr = require('unitr'),
+    schedule = require('schedule-frame'),
     laidout = require('laidout');
 
-var LEFT = 'left';
-    RIGHT = 'right';
-    BOTTOM = 'bottom';
+var LEFT = 'left',
+    RIGHT = 'right',
+    BOTTOM = 'bottom',
     TOP = 'top',
     CLOSED = 'closed',
     OPEN = 'open',
-    CLOSE = 'close'
+    CLOSE = 'close',
     HORIZONTAL = 'horizontal',
     VERTICAL = 'vertical',
     CLOSE = 'close',
@@ -29,8 +30,7 @@ opposites[RIGHT] = LEFT;
 opposites[TOP] = BOTTOM;
 opposites[BOTTOM] = TOP;
 
-var allFlaps = [],
-    openStack = [];
+var allFlaps = [];
 
 function getSideForAngle(angle){
     return angle > SW ?
@@ -51,8 +51,7 @@ function getPlaneForSide(side){
 }
 
 function getFlapBoxInfo(flap){
-    var targetElement = flap.distance ? flap.element : flap.content,
-        boundingRect = targetElement.getBoundingClientRect(),
+    var boundingRect = flap.getBoundingRect(),
         gutter = flap.gutter,
         box = {
             left: boundingRect.left,
@@ -67,7 +66,7 @@ function getFlapBoxInfo(flap){
             marginWidth: boundingRect.width,
             height: boundingRect.height,
             marginHeight: boundingRect.height
-        }
+        };
 
     if(flap.side === LEFT){
         box.marginWidth += gutter;
@@ -112,6 +111,7 @@ function getCandidatesForInteraction(interaction,flaps){
             angle = interaction.getCurrentAngle(true);
 
         if(
+            flap.isValidInteraction(interaction) &&
             !flap.beingDragged &&
             getPlaneForSide(flap.side) === getPlane(angle) &&
             interaction.pageX - window.scrollX > box.marginLeft &&
@@ -133,7 +133,6 @@ function getCandidatesForInteraction(interaction,flaps){
 
 function moveableCandidates(interaction, candidate){
     var angle = interaction.getCurrentAngle(true),
-        plane = getPlane(angle),
         flap = candidate.flap,
         side = flap.side,
         distance = flap.distance,
@@ -177,7 +176,7 @@ function forEachOpenFlap(fn){
         }else{
             break;
         }
-    };
+    }
 }
 
 function delegateInteraction(interaction){
@@ -188,8 +187,6 @@ function delegateInteraction(interaction){
     if(interaction._delegated){
         return;
     }
-
-    interaction._delegated = true;
 
     var candidates = getCandidatesForInteraction(interaction, allFlaps),
         moveable = candidates.filter(moveableCandidates.bind(null, interaction));
@@ -206,6 +203,8 @@ function delegateInteraction(interaction){
         return;
     }
 
+    interaction._delegated = true;
+
     interaction.preventDefault();
 
     interaction._flap = flapCandidate.flap;
@@ -214,7 +213,8 @@ function delegateInteraction(interaction){
     forEachOpenFlap(function(flap){
         if(
             flap !== flapCandidate.flap &&
-            !doc(flapCandidate.flap.element).closest(flap.element)
+            !doc(flapCandidate.flap.element).closest(flap.element) &&
+            flap.isValidInteraction(interaction)
         ){
             flap.close();
         }
@@ -227,9 +227,7 @@ function endInteraction(interaction){
         interaction._flap = null;
     }else{
         forEachOpenFlap(function(flap){
-            //if(doc(interaction.target).closest(flap.element)){
-                flap._activate(interaction.originalEvent);
-            //}
+            flap._activate(interaction);
         });
     }
 }
@@ -277,13 +275,14 @@ Flap.prototype.render = function(element){
 Flap.prototype.init = function(){
     var flap = this;
     laidout(this.element, function(){
-        if(this.enabled !== false){
+        if(flap.enabled !== false){
             flap.enable();
         }else{
             flap.disable();
         }
-        flap.updateStyle();
+        flap.update();
         flap.element.style.opacity = null;
+        flap._ready = true;
         flap.emit('ready');
     });
 };
@@ -360,34 +359,37 @@ Flap.prototype._start = function(interaction){
     }
 
     this._interaction = interaction;
-    this._setOpen();
+    this._startPosition = { pageX: interaction.pageX, pageY: interaction.pageY };
 };
 Flap.prototype._drag = function(interaction){
     if(!this.enabled){
+        this._startPosition = null;
         return;
     }
 
-    var flap = this;
+    interaction.preventDefault();
 
-    var side = flap.side;
+    var flap = this;
+    interaction.preventDefault();
 
     flap.beingDragged = true;
     flap.startDistance = flap.startDistance || flap.distance;
     if(flap.side === LEFT){
-        flap.distance = flap.startDistance + interaction.pageX - interaction.lastStart.pageX;
+        flap.distance = flap.startDistance + interaction.pageX - flap._startPosition.pageX;
     }else if(flap.side === RIGHT){
-        flap.distance = flap.startDistance - interaction.pageX + interaction.lastStart.pageX;
+        flap.distance = flap.startDistance - interaction.pageX + flap._startPosition.pageX;
     }else if(flap.side === BOTTOM){
-        flap.distance = flap.startDistance - interaction.pageY + interaction.lastStart.pageY;
+        flap.distance = flap.startDistance - interaction.pageY + flap._startPosition.pageY;
     }else if(flap.side === TOP){
-        flap.distance = flap.startDistance + interaction.pageY - interaction.lastStart.pageY;
+        flap.distance = flap.startDistance + interaction.pageY - flap._startPosition.pageY;
     }
     flap.distance = Math.max(Math.min(flap.distance, flap.renderedWidth()), 0);
     flap.update();
     flap.speed = flap.distance - flap.oldDistance;
     flap.oldDistance = flap.distance;
+
 };
-Flap.prototype._end = function(interaction){
+Flap.prototype._end = function(){
     if(!this.enabled){
         return;
     }
@@ -410,7 +412,7 @@ Flap.prototype._end = function(interaction){
     this.settle(direction);
 };
 Flap.prototype._activate = function(event){
-    if(!this.enabled){
+    if(!this.enabled || !this.isValidInteraction(event)){
         return;
     }
 
@@ -425,6 +427,11 @@ Flap.prototype._activate = function(event){
 };
 Flap.prototype._setOpen = function(){
     var flap = this;
+
+    if(this.state === OPEN){
+        return;
+    }
+
     this.show();
     this.state = OPEN;
     setLastInList(allFlaps, this);
@@ -435,7 +442,7 @@ Flap.prototype._setOpen = function(){
     clearTimeout(this._pointerEventTimeout);
     this._pointerEventTimeout = setTimeout(function(){
         flap.element.style[venfix('pointerEvents')] = 'all';
-    },500);
+    },100);
 };
 Flap.prototype.hide = function(){
     if(this.element.style.visibility !== 'hidden'){
@@ -455,25 +462,25 @@ Flap.prototype._setClosed = function(){
     this.emit(CLOSE);
     setFirstInList(allFlaps, this);
 };
-Flap.prototype.update = function(interaction){
-    var flap = this;
-
-    if(this.distance > 0){
-        this._setOpen();
-    }
+Flap.prototype.update = function(){
+    var flap = this,
+        lastDisplayPosition = this.displayPosition;
 
     if(this.side === LEFT || this.side === TOP){
-        this.displayPosition = flap.distance - flap.renderedWidth();
+        this.displayPosition = this.distance - this.renderedWidth();
     }else{
-        this.displayPosition = -flap.distance;
+        this.displayPosition = -this.distance;
     }
 
-    if(flap.distance != flap.lastDistance){
-        requestAnimationFrame(function(){
+    if(this.displayPosition !== lastDisplayPosition){
+        flap.emit('move');
+
+        schedule(function(){
+            if(flap.distance > 0){
+                flap._setOpen();
+            }
             flap.updateStyle(flap.displayPosition);
-            flap.emit('move');
-            flap.lastDistance = flap.distance;
-        });
+        }, this);
     }
 };
 Flap.prototype.updateStyle = function(displayPosition){
@@ -536,16 +543,33 @@ Flap.prototype.close = function(){
     }
     this.settle(CLOSE);
 };
-var widthFrame;
+
 Flap.prototype.renderedWidth = function(){
-    if(getPlaneForSide(this.side) === HORIZONTAL){
-        return this.content.clientWidth;
-    }else{
-        return this.content.clientHeight;
+    var now = Date.now();
+
+    if(!this._ready || !this._widthFrame || now - this._lastWidthTime > 16){
+        this._lastWidthTime = now;
+        if(getPlaneForSide(this.side) === HORIZONTAL){
+            return this._widthFrame = this.content.clientWidth;
+        }else{
+            return this._widthFrame = this.content.clientHeight;
+        }
     }
+
+    return this._widthFrame;
 };
+Flap.prototype.getBoundingRect = function() {
+    var targetElement = this.distance ? this.element : this.content;
+
+    return targetElement.getBoundingClientRect();
+};
+Flap.prototype.isValidInteraction = function(interaction) {
+    return true;
+};
+
 module.exports = Flap;
-},{"crel":2,"doc-js":4,"events":14,"interact-js":8,"laidout":9,"math-js/geometry/pythagoreanEquation":10,"unitr":11,"venfix":12}],2:[function(require,module,exports){
+
+},{"crel":2,"doc-js":4,"events":8,"interact-js":9,"laidout":10,"math-js/geometry/pythagoreanEquation":11,"schedule-frame":12,"unitr":13,"venfix":14}],2:[function(require,module,exports){
 //Copyright (C) 2012 Kory Nunn
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
@@ -592,22 +616,36 @@ module.exports = Flap;
     }
 }(this, function () {
     var fn = 'function',
-        isElement = typeof Element === fn ? function (object) {
-            return object instanceof Element;
+        obj = 'object',
+        nodeType = 'nodeType',
+        textContent = 'textContent',
+        setAttribute = 'setAttribute',
+        attrMapString = 'attrMap',
+        isNodeString = 'isNode',
+        isElementString = 'isElement',
+        d = typeof document === obj ? document : {},
+        isType = function(a, type){
+            return typeof a === type;
+        },
+        isNode = typeof Node === fn ? function (object) {
+            return object instanceof Node;
         } :
-        // in IE <= 8 Element is an object, obviously..
+        // in IE <= 8 Node is an object, obviously..
         function(object){
             return object &&
-                (typeof object==="object") &&
-                (object.nodeType===1) &&
-                (typeof object.ownerDocument ==="object");
+                isType(object, obj) &&
+                (nodeType in object) &&
+                isType(object.ownerDocument,obj);
+        },
+        isElement = function (object) {
+            return crel[isNodeString](object) && object[nodeType] === 1;
         },
         isArray = function(a){
             return a instanceof Array;
         },
         appendChild = function(element, child) {
-          if(!isElement(child)){
-              child = document.createTextNode(child);
+          if(!crel[isNodeString](child)){
+              child = d.createTextNode(child);
           }
           element.appendChild(child);
         };
@@ -620,22 +658,22 @@ module.exports = Flap;
             settings = args[1],
             childIndex = 2,
             argumentsLength = args.length,
-            attributeMap = crel.attrMap;
+            attributeMap = crel[attrMapString];
 
-        element = crel.isElement(element) ? element : document.createElement(element);
+        element = crel[isElementString](element) ? element : d.createElement(element);
         // shortcut
         if(argumentsLength === 1){
             return element;
         }
 
-        if(typeof settings !== 'object' || crel.isElement(settings) || isArray(settings)) {
+        if(!isType(settings,obj) || crel[isNodeString](settings) || isArray(settings)) {
             --childIndex;
             settings = null;
         }
 
         // shortcut if there is only one child that is a string
-        if((argumentsLength - childIndex) === 1 && typeof args[childIndex] === 'string' && element.textContent !== undefined){
-            element.textContent = args[childIndex];
+        if((argumentsLength - childIndex) === 1 && isType(args[childIndex], 'string') && element[textContent] !== undefined){
+            element[textContent] = args[childIndex];
         }else{
             for(; childIndex < argumentsLength; ++childIndex){
                 child = args[childIndex];
@@ -656,13 +694,13 @@ module.exports = Flap;
 
         for(var key in settings){
             if(!attributeMap[key]){
-                element.setAttribute(key, settings[key]);
+                element[setAttribute](key, settings[key]);
             }else{
-                var attr = crel.attrMap[key];
+                var attr = attributeMap[key];
                 if(typeof attr === fn){
                     attr(element, settings[key]);
                 }else{
-                    element.setAttribute(attr, settings[key]);
+                    element[setAttribute](attr, settings[key]);
                 }
             }
         }
@@ -671,11 +709,11 @@ module.exports = Flap;
     }
 
     // Used for mapping one kind of attribute to the supported version of that in bad browsers.
-    // String referenced so that compilers maintain the property name.
-    crel['attrMap'] = {};
+    crel[attrMapString] = {};
 
-    // String referenced so that compilers maintain the property name.
-    crel["isElement"] = isElement;
+    crel[isElementString] = isElement;
+
+    crel[isNodeString] = isNode;
 
     return crel;
 }));
@@ -1337,20 +1375,544 @@ module.exports = function(document){
 module.exports = function isList(object){
     return object !== window && (
         object instanceof Array ||
-        (typeof HTMLCollection === 'function' && object instanceof HTMLCollection) ||
-        (typeof NodeList === 'function' && object instanceof NodeList) ||
-        Array.isArray(object) ||
-        ''+object === '[object StaticNodeList]' ||
-        ''+object === '[object HTMLCollection]'
+        (typeof HTMLCollection !== 'undefined' && object instanceof HTMLCollection) ||
+        (typeof NodeList !== 'undefined' && object instanceof NodeList) ||
+        Array.isArray(object)
     );
 }
 
 },{}],8:[function(require,module,exports){
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+var objectCreate = Object.create || objectCreatePolyfill
+var objectKeys = Object.keys || objectKeysPolyfill
+var bind = Function.prototype.bind || functionBindPolyfill
+
+function EventEmitter() {
+  if (!this._events || !Object.prototype.hasOwnProperty.call(this, '_events')) {
+    this._events = objectCreate(null);
+    this._eventsCount = 0;
+  }
+
+  this._maxListeners = this._maxListeners || undefined;
+}
+module.exports = EventEmitter;
+
+// Backwards-compat with node 0.10.x
+EventEmitter.EventEmitter = EventEmitter;
+
+EventEmitter.prototype._events = undefined;
+EventEmitter.prototype._maxListeners = undefined;
+
+// By default EventEmitters will print a warning if more than 10 listeners are
+// added to it. This is a useful default which helps finding memory leaks.
+var defaultMaxListeners = 10;
+
+var hasDefineProperty;
+try {
+  var o = {};
+  if (Object.defineProperty) Object.defineProperty(o, 'x', { value: 0 });
+  hasDefineProperty = o.x === 0;
+} catch (err) { hasDefineProperty = false }
+if (hasDefineProperty) {
+  Object.defineProperty(EventEmitter, 'defaultMaxListeners', {
+    enumerable: true,
+    get: function() {
+      return defaultMaxListeners;
+    },
+    set: function(arg) {
+      // check whether the input is a positive number (whose value is zero or
+      // greater and not a NaN).
+      if (typeof arg !== 'number' || arg < 0 || arg !== arg)
+        throw new TypeError('"defaultMaxListeners" must be a positive number');
+      defaultMaxListeners = arg;
+    }
+  });
+} else {
+  EventEmitter.defaultMaxListeners = defaultMaxListeners;
+}
+
+// Obviously not all Emitters should be limited to 10. This function allows
+// that to be increased. Set to zero for unlimited.
+EventEmitter.prototype.setMaxListeners = function setMaxListeners(n) {
+  if (typeof n !== 'number' || n < 0 || isNaN(n))
+    throw new TypeError('"n" argument must be a positive number');
+  this._maxListeners = n;
+  return this;
+};
+
+function $getMaxListeners(that) {
+  if (that._maxListeners === undefined)
+    return EventEmitter.defaultMaxListeners;
+  return that._maxListeners;
+}
+
+EventEmitter.prototype.getMaxListeners = function getMaxListeners() {
+  return $getMaxListeners(this);
+};
+
+// These standalone emit* functions are used to optimize calling of event
+// handlers for fast cases because emit() itself often has a variable number of
+// arguments and can be deoptimized because of that. These functions always have
+// the same number of arguments and thus do not get deoptimized, so the code
+// inside them can execute faster.
+function emitNone(handler, isFn, self) {
+  if (isFn)
+    handler.call(self);
+  else {
+    var len = handler.length;
+    var listeners = arrayClone(handler, len);
+    for (var i = 0; i < len; ++i)
+      listeners[i].call(self);
+  }
+}
+function emitOne(handler, isFn, self, arg1) {
+  if (isFn)
+    handler.call(self, arg1);
+  else {
+    var len = handler.length;
+    var listeners = arrayClone(handler, len);
+    for (var i = 0; i < len; ++i)
+      listeners[i].call(self, arg1);
+  }
+}
+function emitTwo(handler, isFn, self, arg1, arg2) {
+  if (isFn)
+    handler.call(self, arg1, arg2);
+  else {
+    var len = handler.length;
+    var listeners = arrayClone(handler, len);
+    for (var i = 0; i < len; ++i)
+      listeners[i].call(self, arg1, arg2);
+  }
+}
+function emitThree(handler, isFn, self, arg1, arg2, arg3) {
+  if (isFn)
+    handler.call(self, arg1, arg2, arg3);
+  else {
+    var len = handler.length;
+    var listeners = arrayClone(handler, len);
+    for (var i = 0; i < len; ++i)
+      listeners[i].call(self, arg1, arg2, arg3);
+  }
+}
+
+function emitMany(handler, isFn, self, args) {
+  if (isFn)
+    handler.apply(self, args);
+  else {
+    var len = handler.length;
+    var listeners = arrayClone(handler, len);
+    for (var i = 0; i < len; ++i)
+      listeners[i].apply(self, args);
+  }
+}
+
+EventEmitter.prototype.emit = function emit(type) {
+  var er, handler, len, args, i, events;
+  var doError = (type === 'error');
+
+  events = this._events;
+  if (events)
+    doError = (doError && events.error == null);
+  else if (!doError)
+    return false;
+
+  // If there is no 'error' event listener then throw.
+  if (doError) {
+    if (arguments.length > 1)
+      er = arguments[1];
+    if (er instanceof Error) {
+      throw er; // Unhandled 'error' event
+    } else {
+      // At least give some kind of context to the user
+      var err = new Error('Unhandled "error" event. (' + er + ')');
+      err.context = er;
+      throw err;
+    }
+    return false;
+  }
+
+  handler = events[type];
+
+  if (!handler)
+    return false;
+
+  var isFn = typeof handler === 'function';
+  len = arguments.length;
+  switch (len) {
+      // fast cases
+    case 1:
+      emitNone(handler, isFn, this);
+      break;
+    case 2:
+      emitOne(handler, isFn, this, arguments[1]);
+      break;
+    case 3:
+      emitTwo(handler, isFn, this, arguments[1], arguments[2]);
+      break;
+    case 4:
+      emitThree(handler, isFn, this, arguments[1], arguments[2], arguments[3]);
+      break;
+      // slower
+    default:
+      args = new Array(len - 1);
+      for (i = 1; i < len; i++)
+        args[i - 1] = arguments[i];
+      emitMany(handler, isFn, this, args);
+  }
+
+  return true;
+};
+
+function _addListener(target, type, listener, prepend) {
+  var m;
+  var events;
+  var existing;
+
+  if (typeof listener !== 'function')
+    throw new TypeError('"listener" argument must be a function');
+
+  events = target._events;
+  if (!events) {
+    events = target._events = objectCreate(null);
+    target._eventsCount = 0;
+  } else {
+    // To avoid recursion in the case that type === "newListener"! Before
+    // adding it to the listeners, first emit "newListener".
+    if (events.newListener) {
+      target.emit('newListener', type,
+          listener.listener ? listener.listener : listener);
+
+      // Re-assign `events` because a newListener handler could have caused the
+      // this._events to be assigned to a new object
+      events = target._events;
+    }
+    existing = events[type];
+  }
+
+  if (!existing) {
+    // Optimize the case of one listener. Don't need the extra array object.
+    existing = events[type] = listener;
+    ++target._eventsCount;
+  } else {
+    if (typeof existing === 'function') {
+      // Adding the second element, need to change to array.
+      existing = events[type] =
+          prepend ? [listener, existing] : [existing, listener];
+    } else {
+      // If we've already got an array, just append.
+      if (prepend) {
+        existing.unshift(listener);
+      } else {
+        existing.push(listener);
+      }
+    }
+
+    // Check for listener leak
+    if (!existing.warned) {
+      m = $getMaxListeners(target);
+      if (m && m > 0 && existing.length > m) {
+        existing.warned = true;
+        var w = new Error('Possible EventEmitter memory leak detected. ' +
+            existing.length + ' "' + String(type) + '" listeners ' +
+            'added. Use emitter.setMaxListeners() to ' +
+            'increase limit.');
+        w.name = 'MaxListenersExceededWarning';
+        w.emitter = target;
+        w.type = type;
+        w.count = existing.length;
+        if (typeof console === 'object' && console.warn) {
+          console.warn('%s: %s', w.name, w.message);
+        }
+      }
+    }
+  }
+
+  return target;
+}
+
+EventEmitter.prototype.addListener = function addListener(type, listener) {
+  return _addListener(this, type, listener, false);
+};
+
+EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+
+EventEmitter.prototype.prependListener =
+    function prependListener(type, listener) {
+      return _addListener(this, type, listener, true);
+    };
+
+function onceWrapper() {
+  if (!this.fired) {
+    this.target.removeListener(this.type, this.wrapFn);
+    this.fired = true;
+    switch (arguments.length) {
+      case 0:
+        return this.listener.call(this.target);
+      case 1:
+        return this.listener.call(this.target, arguments[0]);
+      case 2:
+        return this.listener.call(this.target, arguments[0], arguments[1]);
+      case 3:
+        return this.listener.call(this.target, arguments[0], arguments[1],
+            arguments[2]);
+      default:
+        var args = new Array(arguments.length);
+        for (var i = 0; i < args.length; ++i)
+          args[i] = arguments[i];
+        this.listener.apply(this.target, args);
+    }
+  }
+}
+
+function _onceWrap(target, type, listener) {
+  var state = { fired: false, wrapFn: undefined, target: target, type: type, listener: listener };
+  var wrapped = bind.call(onceWrapper, state);
+  wrapped.listener = listener;
+  state.wrapFn = wrapped;
+  return wrapped;
+}
+
+EventEmitter.prototype.once = function once(type, listener) {
+  if (typeof listener !== 'function')
+    throw new TypeError('"listener" argument must be a function');
+  this.on(type, _onceWrap(this, type, listener));
+  return this;
+};
+
+EventEmitter.prototype.prependOnceListener =
+    function prependOnceListener(type, listener) {
+      if (typeof listener !== 'function')
+        throw new TypeError('"listener" argument must be a function');
+      this.prependListener(type, _onceWrap(this, type, listener));
+      return this;
+    };
+
+// Emits a 'removeListener' event if and only if the listener was removed.
+EventEmitter.prototype.removeListener =
+    function removeListener(type, listener) {
+      var list, events, position, i, originalListener;
+
+      if (typeof listener !== 'function')
+        throw new TypeError('"listener" argument must be a function');
+
+      events = this._events;
+      if (!events)
+        return this;
+
+      list = events[type];
+      if (!list)
+        return this;
+
+      if (list === listener || list.listener === listener) {
+        if (--this._eventsCount === 0)
+          this._events = objectCreate(null);
+        else {
+          delete events[type];
+          if (events.removeListener)
+            this.emit('removeListener', type, list.listener || listener);
+        }
+      } else if (typeof list !== 'function') {
+        position = -1;
+
+        for (i = list.length - 1; i >= 0; i--) {
+          if (list[i] === listener || list[i].listener === listener) {
+            originalListener = list[i].listener;
+            position = i;
+            break;
+          }
+        }
+
+        if (position < 0)
+          return this;
+
+        if (position === 0)
+          list.shift();
+        else
+          spliceOne(list, position);
+
+        if (list.length === 1)
+          events[type] = list[0];
+
+        if (events.removeListener)
+          this.emit('removeListener', type, originalListener || listener);
+      }
+
+      return this;
+    };
+
+EventEmitter.prototype.removeAllListeners =
+    function removeAllListeners(type) {
+      var listeners, events, i;
+
+      events = this._events;
+      if (!events)
+        return this;
+
+      // not listening for removeListener, no need to emit
+      if (!events.removeListener) {
+        if (arguments.length === 0) {
+          this._events = objectCreate(null);
+          this._eventsCount = 0;
+        } else if (events[type]) {
+          if (--this._eventsCount === 0)
+            this._events = objectCreate(null);
+          else
+            delete events[type];
+        }
+        return this;
+      }
+
+      // emit removeListener for all listeners on all events
+      if (arguments.length === 0) {
+        var keys = objectKeys(events);
+        var key;
+        for (i = 0; i < keys.length; ++i) {
+          key = keys[i];
+          if (key === 'removeListener') continue;
+          this.removeAllListeners(key);
+        }
+        this.removeAllListeners('removeListener');
+        this._events = objectCreate(null);
+        this._eventsCount = 0;
+        return this;
+      }
+
+      listeners = events[type];
+
+      if (typeof listeners === 'function') {
+        this.removeListener(type, listeners);
+      } else if (listeners) {
+        // LIFO order
+        for (i = listeners.length - 1; i >= 0; i--) {
+          this.removeListener(type, listeners[i]);
+        }
+      }
+
+      return this;
+    };
+
+function _listeners(target, type, unwrap) {
+  var events = target._events;
+
+  if (!events)
+    return [];
+
+  var evlistener = events[type];
+  if (!evlistener)
+    return [];
+
+  if (typeof evlistener === 'function')
+    return unwrap ? [evlistener.listener || evlistener] : [evlistener];
+
+  return unwrap ? unwrapListeners(evlistener) : arrayClone(evlistener, evlistener.length);
+}
+
+EventEmitter.prototype.listeners = function listeners(type) {
+  return _listeners(this, type, true);
+};
+
+EventEmitter.prototype.rawListeners = function rawListeners(type) {
+  return _listeners(this, type, false);
+};
+
+EventEmitter.listenerCount = function(emitter, type) {
+  if (typeof emitter.listenerCount === 'function') {
+    return emitter.listenerCount(type);
+  } else {
+    return listenerCount.call(emitter, type);
+  }
+};
+
+EventEmitter.prototype.listenerCount = listenerCount;
+function listenerCount(type) {
+  var events = this._events;
+
+  if (events) {
+    var evlistener = events[type];
+
+    if (typeof evlistener === 'function') {
+      return 1;
+    } else if (evlistener) {
+      return evlistener.length;
+    }
+  }
+
+  return 0;
+}
+
+EventEmitter.prototype.eventNames = function eventNames() {
+  return this._eventsCount > 0 ? Reflect.ownKeys(this._events) : [];
+};
+
+// About 1.5x faster than the two-arg version of Array#splice().
+function spliceOne(list, index) {
+  for (var i = index, k = i + 1, n = list.length; k < n; i += 1, k += 1)
+    list[i] = list[k];
+  list.pop();
+}
+
+function arrayClone(arr, n) {
+  var copy = new Array(n);
+  for (var i = 0; i < n; ++i)
+    copy[i] = arr[i];
+  return copy;
+}
+
+function unwrapListeners(arr) {
+  var ret = new Array(arr.length);
+  for (var i = 0; i < ret.length; ++i) {
+    ret[i] = arr[i].listener || arr[i];
+  }
+  return ret;
+}
+
+function objectCreatePolyfill(proto) {
+  var F = function() {};
+  F.prototype = proto;
+  return new F;
+}
+function objectKeysPolyfill(obj) {
+  var keys = [];
+  for (var k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) {
+    keys.push(k);
+  }
+  return k;
+}
+function functionBindPolyfill(context) {
+  var fn = this;
+  return function () {
+    return fn.apply(context, arguments);
+  };
+}
+
+},{}],9:[function(require,module,exports){
 var interactions = [],
     minMoveDistance = 5,
     interact,
     maximumMovesToPersist = 1000, // Should be plenty..
-    propertiesToCopy = 'target,pageX,pageY,clientX,clientY,offsetX,offsetY,screenX,screenY,shiftKey,x,y'.split(','); // Stuff that will be on every interaction.
+    propertiesToCopy = 'target,pageX,pageY,clientX,clientY,offsetX,offsetY,screenX,screenY,shiftKey,x,y'.split(','), // Stuff that will be on every interaction.
+    d = typeof document !== 'undefined' ? document : null;
 
 function Interact(){
     this._elements = [];
@@ -1424,11 +1986,11 @@ function getActualTarget() {
 
     // IE is stupid and doesn't support scrollX/Y
     if(scrollX === undefined){
-        scrollX = document.body.scrollLeft;
-        scrollY = document.body.scrollTop;
+        scrollX = d.body.scrollLeft;
+        scrollY = d.body.scrollTop;
     }
 
-    return document.elementFromPoint(this.pageX - window.scrollX, this.pageY - window.scrollY);
+    return d.elementFromPoint(this.pageX - window.scrollX, this.pageY - window.scrollY);
 }
 
 function getMoveDistance(x1,y1,x2,y2){
@@ -1727,13 +2289,13 @@ function cancel(event){
     }
 }
 
-addEvent(document, 'touchstart', start);
-addEvent(document, 'touchmove', drag);
-addEvent(document, 'touchend', end);
-addEvent(document, 'touchcancel', cancel);
+addEvent(d, 'touchstart', start);
+addEvent(d, 'touchmove', drag);
+addEvent(d, 'touchend', end);
+addEvent(d, 'touchcancel', cancel);
 
 var mouseIsDown = false;
-addEvent(document, 'mousedown', function(event){
+addEvent(d, 'mousedown', function(event){
     mouseIsDown = true;
 
     if(!interactions.length){
@@ -1748,7 +2310,7 @@ addEvent(document, 'mousedown', function(event){
 
     getInteraction().start(event);
 });
-addEvent(document, 'mousemove', function(event){
+addEvent(d, 'mousemove', function(event){
     if(!interactions.length){
         new Interaction(event);
     }
@@ -1765,7 +2327,7 @@ addEvent(document, 'mousemove', function(event){
         interaction.move(event);
     }
 });
-addEvent(document, 'mouseup', function(event){
+addEvent(d, 'mouseup', function(event){
     mouseIsDown = false;
 
     var interaction = getInteraction();
@@ -1779,16 +2341,20 @@ addEvent(document, 'mouseup', function(event){
 });
 
 function addEvent(element, type, callback) {
-    if(element.addEventListener){
-        element.addEventListener(type, callback);
+    if(element == null){
+        return;
     }
-    else if(document.attachEvent){
-        element.attachEvent("on"+ type, callback);
+
+    if(element.addEventListener){
+        element.addEventListener(type, callback, { passive: false });
+    }
+    else if(d.attachEvent){
+        element.attachEvent("on"+ type, callback, { passive: false });
     }
 }
 
 module.exports = interact;
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 function checkElement(element){
     if(!element){
         return false;
@@ -1817,11 +2383,50 @@ module.exports = function laidout(element, callback){
 
     document.addEventListener('DOMNodeInserted', recheckElement);
 };
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 module.exports = function(sideA, sideB){
     return Math.sqrt(Math.pow(sideA, 2) + Math.pow(sideB, 2));
 }
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
+var todo = [],
+    todoKeys = [];
+
+function run(){
+    var startTime = Date.now();
+
+    while(todo.length){
+        todoKeys.shift();
+        todo.shift()();
+    }
+}
+
+function schedule(fn, key){
+    if(arguments.length < 2){
+        key = fn;
+    }
+
+    if(typeof fn !== 'function'){
+        throw 'schedule must be passed a function as the first parameter';
+    }
+
+    var keyIndex = todoKeys.indexOf(key)
+
+    if(~keyIndex){ 
+        // Replace task for key
+        todo.splice(keyIndex, 1, fn);
+        return;
+    }
+
+    if(todo.length === 0){
+        requestAnimationFrame(run);
+    }
+
+    todo.push(fn);
+    todoKeys.push(key);
+}
+
+module.exports = schedule;
+},{}],13:[function(require,module,exports){
 var parseRegex = /^(-?(?:\d+|\d+\.\d+|\.\d+))([^\.]*?)$/;
 
 function parse(input){
@@ -1863,12 +2468,38 @@ function addUnit(input, unit){
 
 module.exports = addUnit;
 module.exports.parse = parse;
-},{}],12:[function(require,module,exports){
-var cache = {};
+},{}],14:[function(require,module,exports){
+var cache = {},
+    bodyStyle = {};
+
+if(typeof window !== 'undefined'){
+    if(window.document.body){
+        getBodyStyleProperties();
+    }else{
+        window.addEventListener('load', getBodyStyleProperties);
+    }
+}
+
+function getBodyStyleProperties(){
+    var shortcuts = {},
+        items = document.defaultView.getComputedStyle(document.body);
+
+    for(var i = 0; i < items.length; i++){
+        bodyStyle[items[i]] = null;
+
+        // This is kinda dodgy but it works.
+        baseName = items[i].match(/^(\w+)-.*$/);
+        if(baseName){
+            if(shortcuts[baseName[1]]){
+                bodyStyle[baseName[1]] = null;
+            }else{
+                shortcuts[baseName[1]] = true;
+            }
+        }
+    }
+}
 
 function venfix(property, target){
-    var bodyStyle = document.body.style;
-
     if(!target && cache[property]){
         return cache[property];
     }
@@ -1878,6 +2509,7 @@ function venfix(property, target){
     var props = [];
 
     for(var key in target){
+        cache[key] = key;
         props.push(key);
     }
 
@@ -1885,7 +2517,7 @@ function venfix(property, target){
         return property;
     }
 
-    var propertyRegex = new RegExp('^(' + venfix.prefixes.join('|') + ')' + property + '$', 'i');
+    var propertyRegex = new RegExp('^-(' + venfix.prefixes.join('|') + ')-' + property + '$', 'i');
 
     for(var i = 0; i < props.length; i++) {
         if(props[i].match(propertyRegex)){
@@ -1901,7 +2533,7 @@ function venfix(property, target){
 venfix.prefixes = ['webkit', 'moz', 'ms', 'o'];
 
 module.exports = venfix;
-},{}],13:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 var Flap = require('./flaps'),
     doc = require('doc-js'),
     crel = require('crel'),
@@ -1958,7 +2590,6 @@ crel(bottomFlap.content,
 );
 
 topFlap.side = 'top';
-topFlap.width = '100%';
 topFlap.gutter = window.innerHeight;
 doc(window).on('resize', function(){
     topFlap.gutter = window.innerHeight;
@@ -1999,6 +2630,10 @@ bottomFlap.on('move', function(){
     main.style[venfix('transform')] = 'translate3d(0,' + (-100 * openness) + 'px,' + (-150 * openness) + 'px) rotate3d(1,0,0,'+ (45 * openness) +'deg)';
     main.style['text-shadow'] = '0px ' + (100 * openness) + 'px 3px rgba(0,0,0,' + openness / 3 + ')';
     main.style[venfix('maskImage')] = 'linear-gradient(to top, black, rgba(0,0,0,' + (1-openness) + ')';
+    console.log('move');
+});
+bottomFlap.on('settle', function(){
+    console.log('settle');
 });
 
 window.onload = function(){
@@ -2022,307 +2657,4 @@ window.onload = function(){
         doc(event.target).closest('.flap').flap.close();
     });
 };
-},{"./flaps":1,"crel":2,"doc-js":4,"venfix":12}],14:[function(require,module,exports){
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-function EventEmitter() {
-  this._events = this._events || {};
-  this._maxListeners = this._maxListeners || undefined;
-}
-module.exports = EventEmitter;
-
-// Backwards-compat with node 0.10.x
-EventEmitter.EventEmitter = EventEmitter;
-
-EventEmitter.prototype._events = undefined;
-EventEmitter.prototype._maxListeners = undefined;
-
-// By default EventEmitters will print a warning if more than 10 listeners are
-// added to it. This is a useful default which helps finding memory leaks.
-EventEmitter.defaultMaxListeners = 10;
-
-// Obviously not all Emitters should be limited to 10. This function allows
-// that to be increased. Set to zero for unlimited.
-EventEmitter.prototype.setMaxListeners = function(n) {
-  if (!isNumber(n) || n < 0 || isNaN(n))
-    throw TypeError('n must be a positive number');
-  this._maxListeners = n;
-  return this;
-};
-
-EventEmitter.prototype.emit = function(type) {
-  var er, handler, len, args, i, listeners;
-
-  if (!this._events)
-    this._events = {};
-
-  // If there is no 'error' event listener then throw.
-  if (type === 'error') {
-    if (!this._events.error ||
-        (isObject(this._events.error) && !this._events.error.length)) {
-      er = arguments[1];
-      if (er instanceof Error) {
-        throw er; // Unhandled 'error' event
-      }
-      throw TypeError('Uncaught, unspecified "error" event.');
-    }
-  }
-
-  handler = this._events[type];
-
-  if (isUndefined(handler))
-    return false;
-
-  if (isFunction(handler)) {
-    switch (arguments.length) {
-      // fast cases
-      case 1:
-        handler.call(this);
-        break;
-      case 2:
-        handler.call(this, arguments[1]);
-        break;
-      case 3:
-        handler.call(this, arguments[1], arguments[2]);
-        break;
-      // slower
-      default:
-        len = arguments.length;
-        args = new Array(len - 1);
-        for (i = 1; i < len; i++)
-          args[i - 1] = arguments[i];
-        handler.apply(this, args);
-    }
-  } else if (isObject(handler)) {
-    len = arguments.length;
-    args = new Array(len - 1);
-    for (i = 1; i < len; i++)
-      args[i - 1] = arguments[i];
-
-    listeners = handler.slice();
-    len = listeners.length;
-    for (i = 0; i < len; i++)
-      listeners[i].apply(this, args);
-  }
-
-  return true;
-};
-
-EventEmitter.prototype.addListener = function(type, listener) {
-  var m;
-
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  if (!this._events)
-    this._events = {};
-
-  // To avoid recursion in the case that type === "newListener"! Before
-  // adding it to the listeners, first emit "newListener".
-  if (this._events.newListener)
-    this.emit('newListener', type,
-              isFunction(listener.listener) ?
-              listener.listener : listener);
-
-  if (!this._events[type])
-    // Optimize the case of one listener. Don't need the extra array object.
-    this._events[type] = listener;
-  else if (isObject(this._events[type]))
-    // If we've already got an array, just append.
-    this._events[type].push(listener);
-  else
-    // Adding the second element, need to change to array.
-    this._events[type] = [this._events[type], listener];
-
-  // Check for listener leak
-  if (isObject(this._events[type]) && !this._events[type].warned) {
-    var m;
-    if (!isUndefined(this._maxListeners)) {
-      m = this._maxListeners;
-    } else {
-      m = EventEmitter.defaultMaxListeners;
-    }
-
-    if (m && m > 0 && this._events[type].length > m) {
-      this._events[type].warned = true;
-      console.error('(node) warning: possible EventEmitter memory ' +
-                    'leak detected. %d listeners added. ' +
-                    'Use emitter.setMaxListeners() to increase limit.',
-                    this._events[type].length);
-      if (typeof console.trace === 'function') {
-        // not supported in IE 10
-        console.trace();
-      }
-    }
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.on = EventEmitter.prototype.addListener;
-
-EventEmitter.prototype.once = function(type, listener) {
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  var fired = false;
-
-  function g() {
-    this.removeListener(type, g);
-
-    if (!fired) {
-      fired = true;
-      listener.apply(this, arguments);
-    }
-  }
-
-  g.listener = listener;
-  this.on(type, g);
-
-  return this;
-};
-
-// emits a 'removeListener' event iff the listener was removed
-EventEmitter.prototype.removeListener = function(type, listener) {
-  var list, position, length, i;
-
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  if (!this._events || !this._events[type])
-    return this;
-
-  list = this._events[type];
-  length = list.length;
-  position = -1;
-
-  if (list === listener ||
-      (isFunction(list.listener) && list.listener === listener)) {
-    delete this._events[type];
-    if (this._events.removeListener)
-      this.emit('removeListener', type, listener);
-
-  } else if (isObject(list)) {
-    for (i = length; i-- > 0;) {
-      if (list[i] === listener ||
-          (list[i].listener && list[i].listener === listener)) {
-        position = i;
-        break;
-      }
-    }
-
-    if (position < 0)
-      return this;
-
-    if (list.length === 1) {
-      list.length = 0;
-      delete this._events[type];
-    } else {
-      list.splice(position, 1);
-    }
-
-    if (this._events.removeListener)
-      this.emit('removeListener', type, listener);
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.removeAllListeners = function(type) {
-  var key, listeners;
-
-  if (!this._events)
-    return this;
-
-  // not listening for removeListener, no need to emit
-  if (!this._events.removeListener) {
-    if (arguments.length === 0)
-      this._events = {};
-    else if (this._events[type])
-      delete this._events[type];
-    return this;
-  }
-
-  // emit removeListener for all listeners on all events
-  if (arguments.length === 0) {
-    for (key in this._events) {
-      if (key === 'removeListener') continue;
-      this.removeAllListeners(key);
-    }
-    this.removeAllListeners('removeListener');
-    this._events = {};
-    return this;
-  }
-
-  listeners = this._events[type];
-
-  if (isFunction(listeners)) {
-    this.removeListener(type, listeners);
-  } else {
-    // LIFO order
-    while (listeners.length)
-      this.removeListener(type, listeners[listeners.length - 1]);
-  }
-  delete this._events[type];
-
-  return this;
-};
-
-EventEmitter.prototype.listeners = function(type) {
-  var ret;
-  if (!this._events || !this._events[type])
-    ret = [];
-  else if (isFunction(this._events[type]))
-    ret = [this._events[type]];
-  else
-    ret = this._events[type].slice();
-  return ret;
-};
-
-EventEmitter.listenerCount = function(emitter, type) {
-  var ret;
-  if (!emitter._events || !emitter._events[type])
-    ret = 0;
-  else if (isFunction(emitter._events[type]))
-    ret = 1;
-  else
-    ret = emitter._events[type].length;
-  return ret;
-};
-
-function isFunction(arg) {
-  return typeof arg === 'function';
-}
-
-function isNumber(arg) {
-  return typeof arg === 'number';
-}
-
-function isObject(arg) {
-  return typeof arg === 'object' && arg !== null;
-}
-
-function isUndefined(arg) {
-  return arg === void 0;
-}
-
-},{}]},{},[13]);
+},{"./flaps":1,"crel":2,"doc-js":4,"venfix":14}]},{},[15]);

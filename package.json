@@ -5,17 +5,26 @@
   "main": "flaps.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "browserify test.js > test.browser.js"
+    "build": "browserify test.js > test.browser.js",
+    "watch": "watchify test.js -o test.browser.js"
   },
   "author": "",
   "license": "BSD",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KoryNunn/flap.git"
+  },
   "dependencies": {
     "crel": "^2.1.2",
     "doc-js": "^1.0.0",
     "interact-js": "^2.1.0",
     "laidout": "^1.0.0",
     "math-js": "^1.0.0",
+    "schedule-frame": "^1.0.0",
     "unitr": "^1.0.0",
     "venfix": "^1.0.0"
+  },
+  "devDependencies": {
+    "watchify": "^3.11.0"
   }
 }

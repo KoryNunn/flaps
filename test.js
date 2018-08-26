@@ -54,7 +54,6 @@ crel(bottomFlap.content,
 );
 
 topFlap.side = 'top';
-topFlap.width = '100%';
 topFlap.gutter = window.innerHeight;
 doc(window).on('resize', function(){
     topFlap.gutter = window.innerHeight;
@@ -95,6 +94,10 @@ bottomFlap.on('move', function(){
     main.style[venfix('transform')] = 'translate3d(0,' + (-100 * openness) + 'px,' + (-150 * openness) + 'px) rotate3d(1,0,0,'+ (45 * openness) +'deg)';
     main.style['text-shadow'] = '0px ' + (100 * openness) + 'px 3px rgba(0,0,0,' + openness / 3 + ')';
     main.style[venfix('maskImage')] = 'linear-gradient(to top, black, rgba(0,0,0,' + (1-openness) + ')';
+    console.log('move');
+});
+bottomFlap.on('settle', function(){
+    console.log('settle');
 });
 
 window.onload = function(){

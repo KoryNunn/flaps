@@ -5,6 +5,7 @@ var doc = require('doc-js'),
     crel = require('crel'),
     venfix = require('venfix'),
     unitr = require('unitr'),
+    schedule = require('schedule-frame'),
     laidout = require('laidout');
 
 var LEFT = 'left',
@@ -280,6 +281,7 @@ Flap.prototype.init = function(){
         }
         flap.update();
         flap.element.style.opacity = null;
+        flap._ready = true;
         flap.emit('ready');
     });
 };
@@ -363,6 +365,8 @@ Flap.prototype._drag = function(interaction){
         this._startPosition = null;
         return;
     }
+
+    interaction.preventDefault();
 
     var flap = this;
     interaction.preventDefault();
@@ -468,13 +472,14 @@ Flap.prototype.update = function(){
     }
 
     if(this.displayPosition !== lastDisplayPosition){
-        requestAnimationFrame(function(){
+        flap.emit('move');
+
+        schedule(function(){
             if(flap.distance > 0){
                 flap._setOpen();
             }
             flap.updateStyle(flap.displayPosition);
-            flap.emit('move');
-        });
+        }, this);
     }
 };
 Flap.prototype.updateStyle = function(displayPosition){
@@ -541,7 +546,7 @@ Flap.prototype.close = function(){
 Flap.prototype.renderedWidth = function(){
     var now = Date.now();
 
-    if(!this._widthFrame || now - this._lastWidthTime > 16){
+    if(!this._ready || !this._widthFrame || now - this._lastWidthTime > 16){
         this._lastWidthTime = now;
         if(getPlaneForSide(this.side) === HORIZONTAL){
             return this._widthFrame = this.content.clientWidth;
