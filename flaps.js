@@ -186,8 +186,6 @@ function delegateInteraction(interaction){
         return;
     }
 
-    interaction._delegated = true;
-
     var candidates = getCandidatesForInteraction(interaction, allFlaps),
         moveable = candidates.filter(moveableCandidates.bind(null, interaction));
 
@@ -203,6 +201,8 @@ function delegateInteraction(interaction){
         return;
     }
 
+    interaction._delegated = true;
+
     interaction.preventDefault();
 
     interaction._flap = flapCandidate.flap;
@@ -212,7 +212,7 @@ function delegateInteraction(interaction){
         if(
             flap !== flapCandidate.flap &&
             !doc(flapCandidate.flap.element).closest(flap.element) &&
-            flap.isValidInteraction()
+            flap.isValidInteraction(interaction)
         ){
             flap.close();
         }
@@ -356,24 +356,27 @@ Flap.prototype._start = function(interaction){
     }
 
     this._interaction = interaction;
+    this._startPosition = { pageX: interaction.pageX, pageY: interaction.pageY };
 };
 Flap.prototype._drag = function(interaction){
     if(!this.enabled){
+        this._startPosition = null;
         return;
     }
 
     var flap = this;
+    interaction.preventDefault();
 
     flap.beingDragged = true;
     flap.startDistance = flap.startDistance || flap.distance;
     if(flap.side === LEFT){
-        flap.distance = flap.startDistance + interaction.pageX - interaction.lastStart.pageX;
+        flap.distance = flap.startDistance + interaction.pageX - flap._startPosition.pageX;
     }else if(flap.side === RIGHT){
-        flap.distance = flap.startDistance - interaction.pageX + interaction.lastStart.pageX;
+        flap.distance = flap.startDistance - interaction.pageX + flap._startPosition.pageX;
     }else if(flap.side === BOTTOM){
-        flap.distance = flap.startDistance - interaction.pageY + interaction.lastStart.pageY;
+        flap.distance = flap.startDistance - interaction.pageY + flap._startPosition.pageY;
     }else if(flap.side === TOP){
-        flap.distance = flap.startDistance + interaction.pageY - interaction.lastStart.pageY;
+        flap.distance = flap.startDistance + interaction.pageY - flap._startPosition.pageY;
     }
     flap.distance = Math.max(Math.min(flap.distance, flap.renderedWidth()), 0);
     flap.update();
