@@ -90,4 +90,4 @@ I will probably change the way Flaps animate in the future to be time based rath
 
 ## Caveat
 
-Works OK, but not perfectly, in IE >= 9, Does not work in IE <= 8. Pull requests welcome.
+Works OK, but not perfectly, in IE >= 9. Does not work in IE <= 8. Pull requests welcome.
